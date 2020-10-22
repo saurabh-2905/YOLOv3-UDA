@@ -7,6 +7,8 @@ dist
 output
 data/coco
 backup
-weights/*.weights
+#weights/*.weights
 __pycache__
 checkpoints
+.vscode
+get-pip.py
