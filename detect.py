@@ -23,7 +23,7 @@ from matplotlib.ticker import NullLocator
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_folder", type=str, default="data/samples", help="path to dataset")
+    parser.add_argument("--image_folder", type=str, default="data/test/images", help="path to dataset")
     parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
     parser.add_argument("--weights_path", type=str, default="weights/yolov3.weights", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
