@@ -18,17 +18,47 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.ticker import NullLocator
 
+# packages for defined functions
+import json
+import cv2
+from pycocotools.coco import COCO
+from PIL import Image
+import os
+import matplotlib.pyplot as plt
+#import colormap as cmap
+import numpy as np
+import torch
+
+    
+def draw_xywha(im, x, y, w, h, angle=0, color=(255,0,0), linewidth=5):
+    '''
+    im: image numpy array, shape(h,w,3), RGB
+    angle: degree
+    '''
+    c, s = np.cos(angle/180*np.pi), np.sin(angle/180*np.pi)
+    R = np.asarray([[c, s], [-s, c]])
+    pts = np.asarray([[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]])
+    rot_pts = []
+    for pt in pts:
+        rot_pts.append(([x, y] + pt @ R).astype(int))
+    contours = np.array([rot_pts[0], rot_pts[1], rot_pts[2], rot_pts[3]])
+    cv2.polylines(im, [contours], isClosed=True, color=color,
+                thickness=linewidth, lineType=cv2.LINE_4)
+    return im
+    
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--image_folder", type=str, default="data/test/paths.txt", help="path to dataset")
-    parser.add_argument("--weights_path", type=str, default="checkpoints/yolov3_ckpt_199.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
     parser.add_argument("--conf_thres", type=float, default=0.9, help="object confidence threshold")
     parser.add_argument("--nms_thres", type=float, default=0.8, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
+    parser.add_argument("--dataset", type=str, default="None",choices=['theodore'])
     opt = parser.parse_args()
     print(opt)
 
@@ -37,7 +67,7 @@ if __name__ == "__main__":
     os.makedirs("output/targets", exist_ok=True)
 
     # Get dataloader
-    dataset = ListDataset(opt.image_folder, augment=False)
+    dataset = ListDataset(opt.image_folder, augment=False, normalized_labels=False)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -88,7 +118,7 @@ if __name__ == "__main__":
         img = np.array(Image.open(path))
         plt.figure()
         fig, ax = plt.subplots(1)
-        ax.imshow(img)
+       # ax.imshow(img)
 
         # Draw bounding boxes and labels of detections
         if detections is not None:
@@ -104,18 +134,25 @@ if __name__ == "__main__":
 
                 color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
                 # Create a Rectangle patch
-                bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, edgecolor=color, facecolor="none")
+                #bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, edgecolor=color, facecolor="none")
+                
+                img = draw_xywha(img, x1, y1, box_w, box_h, angle=0, color=color)
                 # Add the bbox to the plot
-                ax.add_patch(bbox)
-                # Add label
-                plt.text(
-                    x1,
-                    y1,
-                    s=classes[int(cls_pred)],
-                    color="white",
-                    verticalalignment="top",
-                    bbox={"color": color, "pad": 0},
-                )
+                #ax.add_patch(bbox)
+
+                ax.imshow(img[...,::-1])
+                ax.axis("off")
+                ax.grid(False)
+
+                # # Add label
+                # plt.text(
+                #     x1,
+                #     y1,
+                #     s=classes[int(cls_pred)],
+                #     color="white",
+                #     verticalalignment="top",
+                #     bbox={"color": color, "pad": 0},
+                # )
 
         # Save generated image with detections
         plt.axis("off")

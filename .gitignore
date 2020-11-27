@@ -12,3 +12,7 @@ __pycache__
 checkpoints
 .vscode
 get-pip.py
+data
+Visualization tool.ipynb
+Visualization tool-checkpoint.ipynb
+logs
