@@ -10,6 +10,7 @@ from test import evaluate
 from terminaltables import AsciiTable
 
 import os
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import sys
 import time
 import datetime
@@ -22,9 +23,23 @@ from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
 
+def adjust_learning_rate(optimizer, epoch):
+    # use warmup
+    if epoch < 5:
+        lr = opt.lr * ((epoch + 1) / 5)
+    else:
+    # use cosine lr
+        PI = 3.14159
+        lr = opt.lr * 0.5 * (1 + math.cos(epoch * PI / opt.epochs)) 
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+        print(lr)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=100, help="number of epochs")
+    parser.add_argument("--epochs", type=int, default=1000, help="number of epochs")
+    parser.add_argument("--lr", type=float, default=1e-2, help="learning rate")
     parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
     parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
@@ -74,7 +89,7 @@ if __name__ == "__main__":
         collate_fn=dataset.collate_fn,
     )
 
-    optimizer = torch.optim.Adam(model.parameters())
+    optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
 
     metrics = [
         "grid_size",
@@ -119,6 +134,7 @@ if __name__ == "__main__":
             metric_table = [["Metrics", *[f"YOLO Layer {i}" for i in range(len(model.yolo_layers))]]]
 
             # Log metrics at each YOLO layer
+            batch_acc = 0
             for i, metric in enumerate(metrics):
                 formats = {m: "%.6f" for m in metrics}
                 formats["grid_size"] = "%2d"
@@ -126,13 +142,19 @@ if __name__ == "__main__":
                 row_metrics = [formats[metric] % yolo.metrics.get(metric, 0) for yolo in model.yolo_layers]
                 metric_table += [[metric, *row_metrics]]
 
-                # Tensorboard logging
-                tensorboard_log = []
-                for j, yolo in enumerate(model.yolo_layers):
-                    for name, metric in yolo.metrics.items():
-                        if name != "grid_size":
-                            tensorboard_log += [(f"{name}_{j+1}", metric)]
-                tensorboard_log += [("loss", loss.item())]
+            # Tensorboard logging
+            tensorboard_log = []
+            for j, yolo in enumerate(model.yolo_layers):
+                for name, metric in yolo.metrics.items():
+                    if name != "grid_size":
+                        tensorboard_log += [(f"{name}_{j+1}", metric)]
+                        if name == "cls_acc":
+                            batch_acc += metric
+
+            batch_acc = batch_acc / 3
+            tensorboard_log += [("loss", loss.item())]
+            tensorboard_log += [("accu", batch_acc)]
+
                 logger.list_of_scalars_summary(tensorboard_log, batches_done)
 
             log_str += AsciiTable(metric_table).table
