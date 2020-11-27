@@ -84,6 +84,7 @@ class ListDataset(Dataset):
         # ---------
 
         img_path = self.img_files[index % len(self.img_files)].rstrip()
+        print(img_path)
 
         # Extract image as PyTorch tensor
         img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
@@ -136,12 +137,15 @@ class ListDataset(Dataset):
 
     def collate_fn(self, batch):
         paths, imgs, targets = list(zip(*batch))
-        # Remove empty placeholder targets
-        targets = [boxes for boxes in targets if boxes is not None]
         # Add sample index to targets
         for i, boxes in enumerate(targets):
+            if boxes is None:
+                continue
             boxes[:, 0] = i
+        # Remove empty placeholder targets
+        targets = [boxes for boxes in targets if boxes is not None]
         targets = torch.cat(targets, 0)
+
         # Selects new image size every tenth batch
         if self.multiscale and self.batch_count % 10 == 0:
             self.img_size = random.choice(range(self.min_size, self.max_size + 1, 32))
