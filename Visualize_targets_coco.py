@@ -58,7 +58,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
-    parser.add_argument("--dataset", type=str, default="None",choices=['theodore'])
+    #parser.add_argument("--dataset", type=str, default=None, choices=['theodore'])
     opt = parser.parse_args()
     print(opt)
 
@@ -67,12 +67,13 @@ if __name__ == "__main__":
     os.makedirs("output/targets", exist_ok=True)
 
     # Get dataloader
-    dataset = ListDataset(opt.image_folder, augment=False, normalized_labels=False)
+    dataset = ListDataset(opt.image_folder, augment=False, normalized_labels=False, multiscale=False)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
         shuffle=False,
         num_workers=opt.n_cpu,
+        collate_fn=dataset.collate_fn,
     )
 
     classes = load_classes(opt.class_path)  # Extracts class labels from file
@@ -90,9 +91,9 @@ if __name__ == "__main__":
 
         # Rescale target
         targets[..., 2:] = xywh2xyxy(targets[..., 2:])
-        targets[:,:, 2:] *= opt.img_size
+        targets[..., 2:] *= opt.img_size
 
-        annotations = targets[:,:,1:]
+        annotations = [targets[...,1:]]
 
         # Log progress
         current_time = time.time()
@@ -123,8 +124,8 @@ if __name__ == "__main__":
         # Draw bounding boxes and labels of detections
         if detections is not None:
             # Rescale boxes to original image
-            detections[:,1:] = rescale_boxes(detections[:,1:], opt.img_size, img.shape[:2])
-            unique_labels = detections[:, 0].cpu().unique()
+            detections[...,1:] = rescale_boxes(detections[...,1:], opt.img_size, img.shape[:2])
+            unique_labels = detections[..., 0].cpu().unique()
             n_cls_preds = len(unique_labels)
             bbox_colors = random.sample(colors, n_cls_preds)
             for cls_pred, x1, y1, x2, y2 in detections:
