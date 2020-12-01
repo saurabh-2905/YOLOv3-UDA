@@ -245,10 +245,10 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
     angle_1 = box1[:,-1]
     angle_2 = box2[:,-1]
 
-    b1_x2 += 1e-16
-    b1_y2 += 1e-16
-    b2_x2 += 1e-16
-    b2_y2 += 1e-16
+    b1_x2 += 1e-12
+    b1_y2 += 1e-12
+    b2_x2 += 1e-12
+    b2_y2 += 1e-12
 
     if len(box1) == 1:
         iou_all = FloatTensor(box2.size(0)).fill_(0)
@@ -256,7 +256,7 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
             #Check if any element equals to infinity
             if box1[0,0]==np.inf  or box1[0,1]==np.inf or box1[0,2]==np.inf or box1[0,3]==np.inf \
             or box2[i,0]==np.inf or box2[i,1]==np.inf or box2[i,2]==np.inf or box2[i,3]==np.inf:
-                iou = 1e-16
+                iou = 1e-12
             else:
                 #draw polygon with help of co-ordinates
                 rotated_box1 = Polygon([(b1_x1, b1_y2), (b1_x2, b1_y2), (b1_x2, b1_y1), (b1_x1, b1_y1)])
@@ -273,8 +273,8 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
                 rotated_box1 = rotate(rotated_box1, angle_1)
                 rotated_box2 = rotate(rotated_box2, angle_2[i])
 
-                b1_x1, b1_y1, b1_x2, b1_y2 = FloatTensor(rotated_box1.bounds)
-                b2_x1, b2_y1, b2_x2, b2_y2 = FloatTensor(rotated_box2.bounds)
+                x11, y11, x21, y21 = rotated_box1.bounds
+                x12, y12, x22, y22 = rotated_box2.bounds
 
                 # get the corrdinates of the intersection rectangle
                 inter_rect_x1 = torch.max(x11, x12)
@@ -319,8 +319,11 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
                 rotated_box1 = rotate(rotated_box1, angle_1[i])
                 rotated_box2 = rotate(rotated_box2, angle_2[i])
 
-                x11, y11, x21, y21 = FloatTensor(rotated_box1.bounds)
-                x12, y12, x22, y22 = FloatTensor(rotated_box2.bounds)
+                x11, y11, x21, y21 = rotated_box1.bounds
+                x12, y12, x22, y22 = rotated_box2.bounds
+
+                x11, y11, x21, y21 = torch.tensor([x11, y11, x21, y21])
+                x12, y12, x22, y22 = torch.tensor([x12, y12, x22, y22])
 
                 # get the corrdinates of the intersection rectangle
                 inter_rect_x1 = torch.max(x11, x12)
