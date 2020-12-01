@@ -1,10 +1,23 @@
 import tensorflow as tf
+import os
+import numpy as np
 
 
 class Logger(object):
     def __init__(self, log_dir):
         """Create a summary writer logging to log_dir."""
-        self.writer = tf.summary.create_file_writer(log_dir)
+        #Check for existing versions
+        version_list = os.listdir(log_dir)
+        if version_list == []:
+            ind = 0
+        else:
+            version = [int(ver.split("_")[1]) for ver in version_list]
+            ind = np.array(version).max() + 1
+
+        #os.makedirs(f'version_{ind}', exist_ok=True)
+        #Write file in latest version folder
+        logs_new = os.path.join(log_dir, f'version_{ind}') 
+        self.writer = tf.summary.create_file_writer(logs_new)
 
     def scalar_summary(self, tag, value, step):
         """Log a scalar variable."""

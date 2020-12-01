@@ -40,7 +40,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=1000, help="number of epochs")
     parser.add_argument("--lr", type=float, default=1e-2, help="learning rate")
-    parser.add_argument("--batch_size", type=int, default=5, help="size of each image batch")
+    parser.add_argument("--batch_size", type=int, default=1, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
     parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
@@ -79,7 +79,7 @@ if __name__ == "__main__":
             model.load_darknet_weights(opt.pretrained_weights)
 
     # Get dataloader
-    dataset = ListDataset(train_path, augment=False, multiscale=opt.multiscale_training)
+    dataset = ListDataset(train_path, augment=False, multiscale=opt.multiscale_training, normalized_labels=False)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -200,5 +200,5 @@ if __name__ == "__main__":
         #     print(f"---- mAP {AP.mean()}")
 
         if (epoch) % opt.checkpoint_interval == 0:
-            if batch_acc > 80:
+            if batch_acc > 92 or epoch % 50 ==0:
                 torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)

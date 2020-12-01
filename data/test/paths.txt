@@ -2,3 +2,4 @@
 /localdata/saurabh/yolov3/data/test/images/0030326_img.png 
 /localdata/saurabh/yolov3/data/test/images/0030327_img.png
 /localdata/saurabh/yolov3/data/test/images/0030328_img.png  
+/localdata/saurabh/yolov3/data/test/images/0030329_img.png 

@@ -5,6 +5,7 @@ from utils.utils import *
 from utils.datasets import *
 
 import os
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import sys
 import time
 import datetime
@@ -20,6 +21,8 @@ from torch.autograd import Variable
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.ticker import NullLocator
+
+import cv2
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -87,9 +90,14 @@ if __name__ == "__main__":
         imgs.extend(img_paths)
         img_detections.extend(detections)
 
+        if batch_i == 0:
+            break
+
     # Bounding-box colors
-    cmap = plt.get_cmap("tab20b")
-    colors = [cmap(i) for i in np.linspace(0, 1, 20)]
+    # cmap = plt.get_cmap("tab20b")
+    # colors = [cmap(i) for i in np.linspace(0, 1, 20)]
+
+    colors = [(0,134,213), (220,0,213), (255,0,0), (255, 233, 0), (0,255,0), (255,0,0)]
 
     print("\nSaving images:")
     # Iterate through images and save plot of detections
@@ -98,10 +106,11 @@ if __name__ == "__main__":
         print("(%d) Image: '%s'" % (img_i, path))
 
         # Create plot
-        img = np.array(Image.open(path))
+        #img = np.array(Image.open(path))
+        img = cv2.imread(path, 1)
         plt.figure()
         fig, ax = plt.subplots(1)
-        ax.imshow(img)
+        #ax.imshow(img)
 
         # Draw bounding boxes and labels of detections
         if detections is not None:
@@ -109,35 +118,46 @@ if __name__ == "__main__":
             detections = rescale_boxes(detections, opt.img_size, img.shape[:2])
             unique_labels = detections[:, -1].cpu().unique()
             n_cls_preds = len(unique_labels)
-            bbox_colors = random.sample(colors, n_cls_preds)
+            bbox_colors = colors
             for x1, y1, x2, y2, conf, cls_conf, cls_pred in detections:
 
                 print("\t+ Label: %s, Conf: %.5f" % (classes[int(cls_pred)], cls_conf.item()))
 
-                box_w = x2 - x1
-                box_h = y2 - y1
+                # box_w = x2 - x1
+                # box_h = y2 - y1
+
+                pts = [[x1,y2], [x2,y2], [x2,y1], [x1,y1]]
+                pts = np.array(pts, np.int32).reshape((-1,1,2))
 
                 color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
-                # Create a Rectangle patch
-                bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, edgecolor=color, facecolor="none")
-                # Add the bbox to the plot
-                ax.add_patch(bbox)
-                # Add label
-                plt.text(
-                    x1,
-                    y1,
-                    s=classes[int(cls_pred)],
-                    color="white",
-                    verticalalignment="top",
-                    bbox={"color": color, "pad": 0},
-                )
 
-        # Save generated image with detections
-        plt.axis("off")
-        plt.gca().xaxis.set_major_locator(NullLocator())
-        plt.gca().yaxis.set_major_locator(NullLocator())
-        filename = path.split("/")[-1].split(".")[0]
-        plt.savefig(f"output/{filename}.png", bbox_inches="tight", pad_inches=0.0)
-        plt.close()
+                #Draw bounding boxes
+                cv2.polylines(img, [pts], isClosed=True, color=color, thickness=5)
+                #cv2.putText(img, classes[int(cls_pred)], (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX ,  0.8, 1, cv2.LINE_AA)
+                ax.imshow(img[...,::-1]) #convert BGR image to RGB image
+
+                # # Create a Rectangle patch
+                # bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, edgecolor=color, facecolor="none")
+                # # Add the bbox to the plot
+                # ax.add_patch(bbox)
+
+                # # Add label
+                # plt.text(
+                #     x1,
+                #     y1,
+                #     s=classes[int(cls_pred)],
+                #     color="white",
+                #     verticalalignment="top",
+                #     bbox={"color": color, "pad": 0},
+                # )
+
+        if detections is not None:
+            # Save generated image with detections
+            plt.axis("off")
+            plt.gca().xaxis.set_major_locator(NullLocator())
+            plt.gca().yaxis.set_major_locator(NullLocator())
+            filename = path.split("/")[-1].split(".")[0]
+            plt.savefig(f"output/{filename}.png", bbox_inches="tight", pad_inches=0.0)
+            plt.close()
 
 

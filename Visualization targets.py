@@ -102,7 +102,7 @@ if __name__ == "__main__":
             detections[...,1:] = rescale_boxes(detections[..., 1:], opt.img_size, img.shape[:2])
             unique_labels = detections[:, 0].cpu().unique()
             n_cls_preds = len(unique_labels)
-            bbox_colors = random.sample(colors, n_cls_preds)
+            bbox_colors = colors
 
             for cls_pred, x1, y1, x2, y2 in detections:
 
