@@ -10,6 +10,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
+from shapely.geometry import Polygon
+from shapely.affinity import rotate
+from shapely.validation import explain_validity
+
 
 def to_cpu(tensor):
     return tensor.detach().cpu()
@@ -222,6 +226,121 @@ def bbox_iou(box1, box2, x1y1x2y2=True):
 
     return iou
 
+def iou_rotated(box1, box2, x1y1x2y2=True):
+
+    FloatTensor = torch.cuda.FloatTensor if box1.is_cuda else torch.FloatTensor
+
+    if not x1y1x2y2:
+        # Transform from center and width to exact coordinates
+        b1_x1, b1_x2 = box1[:, 0] - box1[:, 2] / 2, box1[:, 0] + box1[:, 2] / 2
+        b1_y1, b1_y2 = box1[:, 1] - box1[:, 3] / 2, box1[:, 1] + box1[:, 3] / 2
+        b2_x1, b2_x2 = box2[:, 0] - box2[:, 2] / 2, box2[:, 0] + box2[:, 2] / 2
+        b2_y1, b2_y2 = box2[:, 1] - box2[:, 3] / 2, box2[:, 1] + box2[:, 3] / 2
+    else:
+        # Get the coordinates of bounding boxes
+        b1_x1, b1_y1, b1_x2, b1_y2 = box1[:, 0], box1[:, 1], box1[:, 2], box1[:, 3]
+        b2_x1, b2_y1, b2_x2, b2_y2 = box2[:, 0], box2[:, 1], box2[:, 2], box2[:, 3]
+
+    #get angle for rotation for all bounding boxes
+    angle_1 = box1[:,-1]
+    angle_2 = box2[:,-1]
+
+    b1_x2 += 1e-16
+    b1_y2 += 1e-16
+    b2_x2 += 1e-16
+    b2_y2 += 1e-16
+
+    if len(box1) == 1:
+        iou_all = FloatTensor(box2.size(0)).fill_(0)
+        for i in range(len(box2)):
+            #Check if any element equals to infinity
+            if box1[0,0]==np.inf  or box1[0,1]==np.inf or box1[0,2]==np.inf or box1[0,3]==np.inf \
+            or box2[i,0]==np.inf or box2[i,1]==np.inf or box2[i,2]==np.inf or box2[i,3]==np.inf:
+                iou = 1e-16
+            else:
+                #draw polygon with help of co-ordinates
+                rotated_box1 = Polygon([(b1_x1, b1_y2), (b1_x2, b1_y2), (b1_x2, b1_y1), (b1_x1, b1_y1)])
+                rotated_box2 = Polygon([(b2_x1[i], b2_y2[i]), (b2_x2[i], b2_y2[i]), (b2_x2[i], b2_y1[i]), (b2_x1[i], b2_y1[i])])
+
+                 #Check Validity of Polygon and clean if invalid geometry
+                if rotated_box1.is_valid == False or rotated_box2.is_valid == False:
+                    explain_validity(rotated_box1)
+                    explain_validity(rotated_box2)
+                    rotated_box1 = rotated_box1.buffer(0)
+                    rotated_box2 = rotated_box2.buffer(0)
+
+                #rotate the rectangular bbox
+                rotated_box1 = rotate(rotated_box1, angle_1)
+                rotated_box2 = rotate(rotated_box2, angle_2[i])
+
+                b1_x1, b1_y1, b1_x2, b1_y2 = FloatTensor(rotated_box1.bounds)
+                b2_x1, b2_y1, b2_x2, b2_y2 = FloatTensor(rotated_box2.bounds)
+
+                # get the corrdinates of the intersection rectangle
+                inter_rect_x1 = torch.max(x11, x12)
+                inter_rect_y1 = torch.max(y11, y12)
+                inter_rect_x2 = torch.min(x21, x22)
+                inter_rect_y2 = torch.min(y21, y22)
+                # Intersection area
+                inter_area = torch.clamp(inter_rect_x2 - inter_rect_x1 + 1, min=0) * torch.clamp(
+                    inter_rect_y2 - inter_rect_y1 + 1, min=0
+                )
+                # Union Area
+                b1_area = (x21 - x11 + 1) * (y21 - y11 + 1)
+                b2_area = (x22 - x12 + 1) * (y22 - y12 + 1)
+
+                iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
+
+            iou_all[i] = iou
+
+        return iou_all
+
+    else:
+        assert(len(box1) == len(box2))
+        #rotate every bbox
+        iou_all = FloatTensor(box1.size(0)).fill_(0)
+        for i in range(len(box1)):
+            #Check if any element equals to infinity
+            if box1[i,0]==np.inf or box1[i,1]==np.inf or box1[i,2]==np.inf or box1[i,3]==np.inf \
+            or box2[i,0]==np.inf or box2[i,1]==np.inf or box2[i,2]==np.inf or box2[i,3]==np.inf:
+                iou = 1e-16
+            else:
+                rotated_box1 = Polygon([(b1_x1[i], b1_y2[i]), (b1_x2[i], b1_y2[i]), (b1_x2[i], b1_y1[i]), (b1_x1[i], b1_y1[i])])
+                rotated_box2 = Polygon([(b2_x1[i], b2_y2[i]), (b2_x2[i], b2_y2[i]), (b2_x2[i], b2_y1[i]), (b2_x1[i], b2_y1[i])])
+
+                #Check Validity of Polygon and clean if invalid geometry
+                if rotated_box1.is_valid == False or rotated_box2.is_valid == False:
+                    explain_validity(rotated_box1)
+                    explain_validity(rotated_box2)
+                    rotated_box1 = rotated_box1.buffer(0)
+                    rotated_box2 = rotated_box2.buffer(0)
+
+                #rotate the rectangular bbox
+                rotated_box1 = rotate(rotated_box1, angle_1[i])
+                rotated_box2 = rotate(rotated_box2, angle_2[i])
+
+                x11, y11, x21, y21 = FloatTensor(rotated_box1.bounds)
+                x12, y12, x22, y22 = FloatTensor(rotated_box2.bounds)
+
+                # get the corrdinates of the intersection rectangle
+                inter_rect_x1 = torch.max(x11, x12)
+                inter_rect_y1 = torch.max(y11, y12)
+                inter_rect_x2 = torch.min(x21, x22)
+                inter_rect_y2 = torch.min(y21, y22)
+                # Intersection area
+                inter_area = torch.clamp(inter_rect_x2 - inter_rect_x1 + 1, min=0) * torch.clamp(
+                    inter_rect_y2 - inter_rect_y1 + 1, min=0
+                )
+                # Union Area
+                b1_area = (x21 - x11 + 1) * (y21 - y11 + 1)
+                b2_area = (x22 - x12 + 1) * (y22 - y12 + 1)
+
+                iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
+
+            iou_all[i] = iou
+
+        return iou_all
+
 
 def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
     """
@@ -273,6 +392,7 @@ def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
     nA = pred_boxes.size(1)
     nC = pred_cls.size(-1)
     nG = pred_boxes.size(2)
+    nt = target.size(0)
 
     # Output tensors
     obj_mask = ByteTensor(nB, nA, nG, nG).fill_(0)
@@ -283,12 +403,16 @@ def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
     ty = FloatTensor(nB, nA, nG, nG).fill_(0)
     tw = FloatTensor(nB, nA, nG, nG).fill_(0)
     th = FloatTensor(nB, nA, nG, nG).fill_(0)
+    tangle = FloatTensor(nB, nA, nG, nG).fill_(0)
     tcls = FloatTensor(nB, nA, nG, nG, nC).fill_(0)
+    target_boxes = FloatTensor(nt,5).fill_(0)
 
     # Convert to position relative to box
-    target_boxes = target[:, 2:6] * nG
+    target_boxes[:,:4] = target[:, 2:6] * nG
+    target_boxes[:,4] = target[:, 6]
     gxy = target_boxes[:, :2]
-    gwh = target_boxes[:, 2:]
+    gwh = target_boxes[:, 2:4]
+    gangle = target_boxes[:, 4]
     # Get anchors with best iou
     ious = torch.stack([bbox_wh_iou(anchor, gwh) for anchor in anchors])
     best_ious, best_n = ious.max(0)
@@ -311,11 +435,13 @@ def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
     # Width and height
     tw[b, best_n, gj, gi] = torch.log(gw / anchors[best_n][:, 0] + 1e-16)
     th[b, best_n, gj, gi] = torch.log(gh / anchors[best_n][:, 1] + 1e-16)
+    # Angle
+    tangle[b, best_n, gj, gi] = gangle
     # One-hot encoding of label
     tcls[b, best_n, gj, gi, target_labels] = 1
     # Compute label correctness and iou at best anchor
     class_mask[b, best_n, gj, gi] = (pred_cls[b, best_n, gj, gi].argmax(-1) == target_labels).float()
-    iou_scores[b, best_n, gj, gi] = bbox_iou(pred_boxes[b, best_n, gj, gi], target_boxes, x1y1x2y2=False)
+    iou_scores[b, best_n, gj, gi] = iou_rotated(pred_boxes[b, best_n, gj, gi], target_boxes, x1y1x2y2=False)
 
     tconf = obj_mask.float()
-    return iou_scores, class_mask, obj_mask, noobj_mask, tx, ty, tw, th, tcls, tconf
+    return iou_scores, class_mask, obj_mask, noobj_mask, tx, ty, tw, th, tangle, tcls, tconf
