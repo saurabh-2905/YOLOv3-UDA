@@ -271,29 +271,43 @@ def bbox_iou(box1, box2, x1y1x2y2=True):
 
     return iou
 
+def calculate_rotated(x, y, w, h, angle):
+    '''
+    im: image numpy array, shape(h,w,3), RGB
+    angle: degree
+    '''
+    w = w.detach().numpy()
+    h = h.detach().numpy()
+    c, s = np.cos((angle).detach().numpy()/180*np.pi), np.sin((angle).detach().numpy()/180*np.pi)
+    R = np.asarray([[c, s], [-s, c]])
+    pts = np.asarray([[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]])
+    rot_pts = []
+    for pt in pts:
+        rot_pts.append(([x, y] + pt @ R).astype(float))
+    contours = torch.FloatTensor([rot_pts[0], rot_pts[1], rot_pts[2], rot_pts[3]])
+    
+    return contours
+
 def iou_rotated(box1, box2, x1y1x2y2=True):
 
     FloatTensor = torch.cuda.FloatTensor if box1.is_cuda else torch.FloatTensor
 
     if not x1y1x2y2:
-        # Transform from center and width to exact coordinates
-        b1_x1, b1_x2 = box1[:, 0] - box1[:, 2] / 2, box1[:, 0] + box1[:, 2] / 2
-        b1_y1, b1_y2 = box1[:, 1] - box1[:, 3] / 2, box1[:, 1] + box1[:, 3] / 2
-        b2_x1, b2_x2 = box2[:, 0] - box2[:, 2] / 2, box2[:, 0] + box2[:, 2] / 2
-        b2_y1, b2_y2 = box2[:, 1] - box2[:, 3] / 2, box2[:, 1] + box2[:, 3] / 2
+        #Get center co-ordinates and w & h
+        b1_cx, b1_cy, b1_w, b1_h = box1[:,0], box1[:,1], box1[:,2], box1[:,3]
+        b2_cx, b2_cy, b2_w, b2_h = box2[:,0], box2[:,1], box2[:,2], box2[:,3]
+       
     else:
-        # Get the coordinates of bounding boxes
-        b1_x1, b1_y1, b1_x2, b1_y2 = box1[:, 0], box1[:, 1], box1[:, 2], box1[:, 3]
-        b2_x1, b2_y1, b2_x2, b2_y2 = box2[:, 0], box2[:, 1], box2[:, 2], box2[:, 3]
+        # Transform co-ordinates to x,y,w,h
+        b1_cx, b1_cy = box1[:,0] + box1[:,3] / 2, box1[:,1] + box1[:,4] / 2
+        b1_w, b1_h = box1[:,1] - box1[:,0], box1[:,4] - box1[:,3]
 
+        b2_cx, b2_cy = box2[:,0] + box2[:,3] / 2, box2[:,1] + box2[:,4] / 2
+        b2_w, b2_h = box2[:,1] - box2[:,0], box2[:,4] - box2[:,3]
+    
     #get angle for rotation for all bounding boxes
     angle_1 = box1[:,-1]
     angle_2 = box2[:,-1]
-
-    b1_x2 += 1e-12
-    b1_y2 += 1e-12
-    b2_x2 += 1e-12
-    b2_y2 += 1e-12
 
     if len(box1) == 1:
         iou_all = FloatTensor(box2.size(0)).fill_(0)
@@ -303,33 +317,7 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
             or box2[i,0]==np.inf or box2[i,1]==np.inf or box2[i,2]==np.inf or box2[i,3]==np.inf:
                 iou = 1e-12
             else:
-                #draw polygon with help of co-ordinates
-                rotated_box1 = Polygon([(b1_x1, b1_y2), (b1_x2, b1_y2), (b1_x2, b1_y1), (b1_x1, b1_y1)])
-                rotated_box2 = Polygon([(b2_x1[i], b2_y2[i]), (b2_x2[i], b2_y2[i]), (b2_x2[i], b2_y1[i]), (b2_x1[i], b2_y1[i])])
-
-                 #Check Validity of Polygon and clean if invalid geometry
-                if rotated_box1.is_valid == False or rotated_box2.is_valid == False:
-                    explain_validity(rotated_box1)
-                    explain_validity(rotated_box2)
-                    rotated_box1 = rotated_box1.buffer(0)
-                    rotated_box2 = rotated_box2.buffer(0)
-
-                #rotate the rectangular bbox
-                rotated_box1 = rotate(rotated_box1, angle_1)
-                rotated_box2 = rotate(rotated_box2, angle_2[i])
-
-                x1min,y1min,x1max,y1max =  rotated_box1.bounds
-                x2min,y2min,x2max,y2max =  rotated_box2.bounds
-
-                exter_box1 = box(x1min,y1min,x1max,y1max)
-                exter_box2 = box(x2min,y2min,x2max,y2max)
-
-                #Area of Intersection
-                inter_area = exter_box1.intersection(exter_box2).area
-                union_area = exter_box1.union(exter_box2).area
-
-                iou = inter_area / (union_area + 1e-12)
-
+                pass
             iou_all[i] = iou
 
         return iou_all
@@ -344,34 +332,28 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
             or box2[i,0]==np.inf or box2[i,1]==np.inf or box2[i,2]==np.inf or box2[i,3]==np.inf:
                 iou = 1e-16
             else:
-                rotated_box1 = Polygon([(b1_x1[i], b1_y2[i]), (b1_x2[i], b1_y2[i]), (b1_x2[i], b1_y1[i]), (b1_x1[i], b1_y1[i])])
-                rotated_box2 = Polygon([(b2_x1[i], b2_y2[i]), (b2_x2[i], b2_y2[i]), (b2_x2[i], b2_y1[i]), (b2_x1[i], b2_y1[i])])
+                rot_box1 = calculate_rotated(b1_cx[i], b1_cy[i], b1_w[i], b1_h[i], angle_1[i])
+                rot_box2 = calculate_rotated(b2_cx[i], b2_cy[i], b2_w[i], b2_h[i], angle_2[i])
 
-                if rotated_box1.area == 0:
-                    iou = 1e-16
-                else:
-                    #Check Validity of Polygon and clean if invalid geometry
-                    if rotated_box1.is_valid == False or rotated_box2.is_valid == False:
-                        explain_validity(rotated_box1)
-                        explain_validity(rotated_box2)
-                        rotated_box1 = rotated_box1.buffer(0)
-                        rotated_box2 = rotated_box2.buffer(0)
+                b1_x1, b1_y1 = rot_box1.min(0)[0]
+                b1_x2, b1_y2 = rot_box1.max(0)[0]
+                b2_x1, b2_y1 = rot_box2.min(0)[0]
+                b2_x2, b2_y2 = rot_box2.max(0)[0]
 
-                    #rotate the rectangular bbox
-                    rotated_box1 = rotate(rotated_box1, angle_1[i])
-                    rotated_box2 = rotate(rotated_box2, angle_2[i])
+                # get the corrdinates of the intersection rectangle
+                inter_rect_x1 = torch.max(b1_x1, b2_x1)
+                inter_rect_y1 = torch.max(b1_y1, b2_y1)
+                inter_rect_x2 = torch.min(b1_x2, b2_x2)
+                inter_rect_y2 = torch.min(b1_y2, b2_y2)
+                # Intersection area
+                inter_area = torch.clamp(inter_rect_x2 - inter_rect_x1 + 1, min=0) * torch.clamp(
+                    inter_rect_y2 - inter_rect_y1 + 1, min=0
+                )
+                # Union Area
+                b1_area = (b1_x2 - b1_x1 + 1) * (b1_y2 - b1_y1 + 1)
+                b2_area = (b2_x2 - b2_x1 + 1) * (b2_y2 - b2_y1 + 1)
 
-                    x1min,y1min,x1max,y1max =  rotated_box1.bounds
-                    x2min,y2min,x2max,y2max =  rotated_box2.bounds
-
-                    exter_box1 = box(x1min,y1min,x1max,y1max)
-                    exter_box2 = box(x2min,y2min,x2max,y2max)
-
-                    #Area of Intersection
-                    inter_area = exter_box1.intersection(exter_box2).area
-                    union_area = exter_box1.union(exter_box2).area
-
-                    iou = inter_area / (union_area + 1e-12)
+                iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
 
             iou_all[i] = iou
 
