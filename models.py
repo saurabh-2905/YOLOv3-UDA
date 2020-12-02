@@ -119,6 +119,22 @@ class YOLOLayer(nn.Module):
         self.metrics = {}
         self.img_dim = img_dim
         self.grid_size = 0  # grid size
+        self.angle_range = 360
+
+
+    def rotation_loss(self,pred_angle,actual_angle):
+        theta_pred = pred_angle
+        theta_gt = actual_angle
+        dt = theta_pred - theta_gt
+
+        # periodic SE
+        dt = torch.abs(torch.remainder(dt-np.pi/2,np.pi) - np.pi/2)
+
+        assert (dt >= 0).all()
+        loss = dt.sum()
+
+        return loss
+
 
     def compute_grid_offsets(self, grid_size, cuda=True):
         self.grid_size = grid_size
@@ -144,7 +160,7 @@ class YOLOLayer(nn.Module):
         grid_size = x.size(2)
 
         prediction = (
-            x.view(num_samples, self.num_anchors, self.num_classes + 5, grid_size, grid_size)
+            x.view(num_samples, self.num_anchors, self.num_classes + 6, grid_size, grid_size)
             .permute(0, 1, 3, 4, 2)
             .contiguous()
         )
@@ -154,23 +170,27 @@ class YOLOLayer(nn.Module):
         y = torch.sigmoid(prediction[..., 1])  # Center y
         w = prediction[..., 2]  # Width
         h = prediction[..., 3]  # Height
-        pred_conf = torch.sigmoid(prediction[..., 4])  # Conf
-        pred_cls = torch.sigmoid(prediction[..., 5:])  # Cls pred.
+        angle = torch.sigmoid(prediction[...,4])
+        pred_conf = torch.sigmoid(prediction[..., 5])  # Conf
+        pred_cls = torch.sigmoid(prediction[..., 6:])  # Cls pred.
 
         # If grid size does not match current we compute new offsets
         if grid_size != self.grid_size:
             self.compute_grid_offsets(grid_size, cuda=x.is_cuda)
 
         # Add offset and scale with anchors
-        pred_boxes = FloatTensor(prediction[..., :4].shape)
+        pred_boxes = FloatTensor(prediction[..., :5].shape)
         pred_boxes[..., 0] = x.data + self.grid_x
         pred_boxes[..., 1] = y.data + self.grid_y
         pred_boxes[..., 2] = torch.exp(w.data) * self.anchor_w
         pred_boxes[..., 3] = torch.exp(h.data) * self.anchor_h
+        pred_boxes[..., 4] =   angle * self.angle_range - (self.angle_range / 2)
+
+        pred_boxes[...,:4] = pred_boxes[...,:4] * self.stride
 
         output = torch.cat(
             (
-                pred_boxes.view(num_samples, -1, 4) * self.stride,
+                pred_boxes.view(num_samples, -1, 5) ,
                 pred_conf.view(num_samples, -1, 1),
                 pred_cls.view(num_samples, -1, self.num_classes),
             ),
@@ -180,7 +200,7 @@ class YOLOLayer(nn.Module):
         if targets is None:
             return output, 0
         else:
-            iou_scores, class_mask, obj_mask, noobj_mask, tx, ty, tw, th, tcls, tconf = build_targets(
+            iou_scores, class_mask, obj_mask, noobj_mask, tx, ty, tw, th, tangle, tcls, tconf = build_targets(
                 pred_boxes=pred_boxes,
                 pred_cls=pred_cls,
                 target=targets,
@@ -188,16 +208,24 @@ class YOLOLayer(nn.Module):
                 ignore_thres=self.ignore_thres,
             )
 
+            # Convert both the angles to radian for loss calculation
+            tangle_mask = tangle[obj_mask] / 180 * np.pi
+            if self.angle_range == 360:
+                pangle_mask = angle[obj_mask] * 2 * np.pi - np.pi
+            elif self.angle_range == 180:
+                pangle_mask = angle[obj_mask] * np.pi - np.pi / 2
+
             # Loss : Mask outputs to ignore non-existing objects (except with conf. loss)
             loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
             loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
             loss_w = self.mse_loss(w[obj_mask], tw[obj_mask])
             loss_h = self.mse_loss(h[obj_mask], th[obj_mask])
+            loss_a = self.rotation_loss(pangle_mask, tangle_mask)
             loss_conf_obj = self.bce_loss(pred_conf[obj_mask], tconf[obj_mask])
             loss_conf_noobj = self.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
             loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
             loss_cls = self.bce_loss(pred_cls[obj_mask], tcls[obj_mask])
-            total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
+            total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls + loss_a
 
             # Metrics
             cls_acc = 100 * class_mask[obj_mask].mean()
@@ -217,6 +245,7 @@ class YOLOLayer(nn.Module):
                 "y": to_cpu(loss_y).item(),
                 "w": to_cpu(loss_w).item(),
                 "h": to_cpu(loss_h).item(),
+                "angle": to_cpu(loss_a).item(),
                 "conf": to_cpu(loss_conf).item(),
                 "cls": to_cpu(loss_cls).item(),
                 "cls_acc": to_cpu(cls_acc).item(),

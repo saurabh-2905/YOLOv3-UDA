@@ -273,23 +273,11 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
                 rotated_box1 = rotate(rotated_box1, angle_1)
                 rotated_box2 = rotate(rotated_box2, angle_2[i])
 
-                x11, y11, x21, y21 = rotated_box1.bounds
-                x12, y12, x22, y22 = rotated_box2.bounds
+                #Area of Intersection
+                inter_area = rotated_box1.intersection(rotated_box2).area
+                union_area = rotated_box1.union(rotated_box2).area
 
-                # get the corrdinates of the intersection rectangle
-                inter_rect_x1 = torch.max(x11, x12)
-                inter_rect_y1 = torch.max(y11, y12)
-                inter_rect_x2 = torch.min(x21, x22)
-                inter_rect_y2 = torch.min(y21, y22)
-                # Intersection area
-                inter_area = torch.clamp(inter_rect_x2 - inter_rect_x1 + 1, min=0) * torch.clamp(
-                    inter_rect_y2 - inter_rect_y1 + 1, min=0
-                )
-                # Union Area
-                b1_area = (x21 - x11 + 1) * (y21 - y11 + 1)
-                b2_area = (x22 - x12 + 1) * (y22 - y12 + 1)
-
-                iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
+                iou = inter_area / (union_area + 1e-12)
 
             iou_all[i] = iou
 
@@ -319,26 +307,11 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
                 rotated_box1 = rotate(rotated_box1, angle_1[i])
                 rotated_box2 = rotate(rotated_box2, angle_2[i])
 
-                x11, y11, x21, y21 = rotated_box1.bounds
-                x12, y12, x22, y22 = rotated_box2.bounds
+                #Area of Intersection
+                inter_area = rotated_box1.intersection(rotated_box2).area
+                union_area = rotated_box1.union(rotated_box2).area
 
-                x11, y11, x21, y21 = torch.tensor([x11, y11, x21, y21])
-                x12, y12, x22, y22 = torch.tensor([x12, y12, x22, y22])
-
-                # get the corrdinates of the intersection rectangle
-                inter_rect_x1 = torch.max(x11, x12)
-                inter_rect_y1 = torch.max(y11, y12)
-                inter_rect_x2 = torch.min(x21, x22)
-                inter_rect_y2 = torch.min(y21, y22)
-                # Intersection area
-                inter_area = torch.clamp(inter_rect_x2 - inter_rect_x1 + 1, min=0) * torch.clamp(
-                    inter_rect_y2 - inter_rect_y1 + 1, min=0
-                )
-                # Union Area
-                b1_area = (x21 - x11 + 1) * (y21 - y11 + 1)
-                b2_area = (x22 - x12 + 1) * (y22 - y12 + 1)
-
-                iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
+                iou = inter_area / (union_area + 1e-12)
 
             iou_all[i] = iou
 

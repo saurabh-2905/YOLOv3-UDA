@@ -42,8 +42,8 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=1e-2, help="learning rate")
     parser.add_argument("--batch_size", type=int, default=1, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
-    parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
-    parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
+    parser.add_argument("--model_def", type=str, default="config/yolov3-custom.cfg", help="path to model definition file")
+    parser.add_argument("--data_config", type=str, default="config/custom.data", help="path to data config file")
     parser.add_argument("--pretrained_weights", type=str, default="weights/darknet53.conv.74", help="if specified starts from checkpoint model")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
@@ -98,6 +98,7 @@ if __name__ == "__main__":
         "y",
         "w",
         "h",
+        "angle",
         "conf",
         "cls",
         "cls_acc",
@@ -159,6 +160,7 @@ if __name__ == "__main__":
 
             log_str += AsciiTable(metric_table).table
             log_str += f"\nTotal loss {loss.item()}"
+            log_str += f"\nTotal acc {batch_acc}"
 
             # Determine approximate time left for epoch
             epoch_batches_left = len(dataloader) - (batch_i + 1)
@@ -200,5 +202,5 @@ if __name__ == "__main__":
         #     print(f"---- mAP {AP.mean()}")
 
         if (epoch) % opt.checkpoint_interval == 0:
-            if batch_acc > 92 or epoch % 50 ==0:
+            if batch_acc > 80 or epoch % 50 ==0:
                 torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)
