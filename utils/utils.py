@@ -185,6 +185,50 @@ def get_batch_statistics(outputs, targets, iou_threshold):
         batch_metrics.append([true_positives, pred_scores, pred_labels])
     return batch_metrics
 
+def rotate_detections(x1, y1, x2, y2, angle):
+
+    FloatTensor = torch.cuda.FloatTensor if x1.is_cuda else torch.FloatTensor
+
+    b1_x1, b1_y1, b1_x2, b1_y2, angle_1 = x1, y1, x2, y2, angle 
+
+    # Get co-ordinates for rotated angle
+    if not b1_x1.size():
+        # Construct a Polygon
+        rotated_box1 = Polygon([(b1_x1, b1_y2), (b1_x2, b1_y2), (b1_x2, b1_y1), (b1_x1, b1_y1)])
+
+        #Check Validity of Polygon and clean if invalid geometry
+        if rotated_box1.is_valid == False:
+            explain_validity(rotated_box1)
+            rotated_box1 = rotated_box1.buffer(0)
+
+        #rotate the rectangular bbox
+        rotated_box1 = rotate(rotated_box1, angle_1) #, origin=(b1_x1, b1_y1) #Keep origin as center
+
+        # Get co-ordinates
+        x, y = rotated_box1.exterior.xy
+
+        xy = [(x,y) for x, y in zip(x, y)]
+    
+    else:
+        for i in range(x1.size(0)):
+            # Construct a Polygon
+            rotated_box1 = Polygon([(b1_x1[i], b1_y2[i]), (b1_x2[i], b1_y2[i]), (b1_x2[i], b1_y1[i]), (b1_x1[i], b1_y1[i])])
+
+            #Check Validity of Polygon and clean if invalid geometry
+            if rotated_box1.is_valid == False:
+                explain_validity(rotated_box1)
+                rotated_box1 = rotated_box1.buffer(0)
+
+            #rotate the rectangular bbox
+            rotated_box1 = rotate(rotated_box1, angle_1[i]) #, origin=(b1_x1[i], b1_y1[i])
+
+            # Get co-ordinates
+            x, y = rotated_box1.exterior.xy
+
+            xy = [(x,y) for x, y in zip(x, y)]
+
+    return xy
+
 
 def bbox_wh_iou(wh1, wh2):
     wh2 = wh2.t()
@@ -274,9 +318,15 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
                 rotated_box1 = rotate(rotated_box1, angle_1)
                 rotated_box2 = rotate(rotated_box2, angle_2[i])
 
+                x1min,y1min,x1max,y1max =  rotated_box1.bounds
+                x2min,y2min,x2max,y2max =  rotated_box2.bounds
+
+                exter_box1 = box(x1min,y1min,x1max,y1max)
+                exter_box2 = box(x2min,y2min,x2max,y2max)
+
                 #Area of Intersection
-                inter_area = rotated_box1.intersection(rotated_box2).area
-                union_area = rotated_box1.union(rotated_box2).area
+                inter_area = exter_box1.intersection(exter_box2).area
+                union_area = exter_box1.union(exter_box2).area
 
                 iou = inter_area / (union_area + 1e-12)
 
@@ -341,24 +391,24 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
     output = [None for _ in range(len(prediction))]
     for image_i, image_pred in enumerate(prediction):
         # Filter out confidence scores below threshold
-        image_pred = image_pred[image_pred[:, 4] >= conf_thres]
+        image_pred = image_pred[image_pred[:, 5] >= conf_thres]
         # If none are remaining => process next image
         if not image_pred.size(0):
             continue
         # Object confidence times class confidence
-        score = image_pred[:, 4] * image_pred[:, 5:].max(1)[0]
+        score = image_pred[:, 5] * image_pred[:, 6:].max(1)[0]
         # Sort by it
         image_pred = image_pred[(-score).argsort()]
-        class_confs, class_preds = image_pred[:, 5:].max(1, keepdim=True)
-        detections = torch.cat((image_pred[:, :5], class_confs.float(), class_preds.float()), 1)
+        class_confs, class_preds = image_pred[:, 6:].max(1, keepdim=True)
+        detections = torch.cat((image_pred[:, :6], class_confs.float(), class_preds.float()), 1)
         # Perform non-maximum suppression
         keep_boxes = []
         while detections.size(0):
-            large_overlap = bbox_iou(detections[0, :4].unsqueeze(0), detections[:, :4]) > nms_thres
+            large_overlap = iou_rotated(detections[0, :5].unsqueeze(0), detections[:, :5]) > nms_thres
             label_match = detections[0, -1] == detections[:, -1]
             # Indices of boxes with lower confidence scores, large IOUs and matching labels
             invalid = large_overlap & label_match
-            weights = detections[invalid, 4:5]
+            weights = detections[invalid, 5:6]
             # Merge overlapping bboxes by order of confidence
             detections[0, :4] = (weights * detections[invalid, :4]).sum(0) / weights.sum()
             keep_boxes += [detections[0]]
