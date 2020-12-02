@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 from shapely.geometry import Polygon
+from shapely.geometry import box
 from shapely.affinity import rotate
 from shapely.validation import explain_validity
 
@@ -296,22 +297,31 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
                 rotated_box1 = Polygon([(b1_x1[i], b1_y2[i]), (b1_x2[i], b1_y2[i]), (b1_x2[i], b1_y1[i]), (b1_x1[i], b1_y1[i])])
                 rotated_box2 = Polygon([(b2_x1[i], b2_y2[i]), (b2_x2[i], b2_y2[i]), (b2_x2[i], b2_y1[i]), (b2_x1[i], b2_y1[i])])
 
-                #Check Validity of Polygon and clean if invalid geometry
-                if rotated_box1.is_valid == False or rotated_box2.is_valid == False:
-                    explain_validity(rotated_box1)
-                    explain_validity(rotated_box2)
-                    rotated_box1 = rotated_box1.buffer(0)
-                    rotated_box2 = rotated_box2.buffer(0)
+                if rotated_box1.area == 0:
+                    iou = 1e-16
+                else:
+                    #Check Validity of Polygon and clean if invalid geometry
+                    if rotated_box1.is_valid == False or rotated_box2.is_valid == False:
+                        explain_validity(rotated_box1)
+                        explain_validity(rotated_box2)
+                        rotated_box1 = rotated_box1.buffer(0)
+                        rotated_box2 = rotated_box2.buffer(0)
 
-                #rotate the rectangular bbox
-                rotated_box1 = rotate(rotated_box1, angle_1[i])
-                rotated_box2 = rotate(rotated_box2, angle_2[i])
+                    #rotate the rectangular bbox
+                    rotated_box1 = rotate(rotated_box1, angle_1[i])
+                    rotated_box2 = rotate(rotated_box2, angle_2[i])
 
-                #Area of Intersection
-                inter_area = rotated_box1.intersection(rotated_box2).area
-                union_area = rotated_box1.union(rotated_box2).area
+                    x1min,y1min,x1max,y1max =  rotated_box1.bounds
+                    x2min,y2min,x2max,y2max =  rotated_box2.bounds
 
-                iou = inter_area / (union_area + 1e-12)
+                    exter_box1 = box(x1min,y1min,x1max,y1max)
+                    exter_box2 = box(x2min,y2min,x2max,y2max)
+
+                    #Area of Intersection
+                    inter_area = exter_box1.intersection(exter_box2).area
+                    union_area = exter_box1.union(exter_box2).area
+
+                    iou = inter_area / (union_area + 1e-12)
 
             iou_all[i] = iou
 
@@ -361,7 +371,7 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
 
 def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
 
-    ByteTensor = torch.cuda.ByteTensor if pred_boxes.is_cuda else torch.ByteTensor
+    ByteTensor = torch.cuda.BoolTensor if pred_boxes.is_cuda else torch.BoolTensor
     FloatTensor = torch.cuda.FloatTensor if pred_boxes.is_cuda else torch.FloatTensor
 
     nB = pred_boxes.size(0)
