@@ -5,7 +5,7 @@ from utils.utils import *
 from utils.datasets import *
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ['CUDA_VISIBLE_DEVICES'] = ' '
 import sys
 import time
 import datetime
@@ -22,15 +22,17 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.ticker import NullLocator
 
+#from train_light import MyModel
+
 import cv2
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_folder", type=str, default="data/test/images", help="path to dataset")
+    parser.add_argument("--image_folder", type=str, default="/localdata/saurabh/yolov3/data/test/images", help="path to dataset")
     parser.add_argument("--model_def", type=str, default="config/yolov3-custom.cfg", help="path to model definition file")
-    parser.add_argument("--weights_path", type=str, default="weights/yolov3.weights", help="path to weights file")
-    parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
-    parser.add_argument("--conf_thres", type=float, default=0.8, help="object confidence threshold")
+    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/rotated_new/97_e2.pth", help="path to weights file")
+    parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
+    parser.add_argument("--conf_thres", type=float, default=0.7, help="object confidence threshold")
     parser.add_argument("--nms_thres", type=float, default=0.4, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
@@ -46,12 +48,19 @@ if __name__ == "__main__":
     # Set up model
     model = Darknet(opt.model_def, img_size=opt.img_size).to(device)
 
-    if opt.weights_path.endswith(".weights"):
+    #model = MyModel(model, opt)
+
+    if opt.pretrained_weights.endswith(".weights"):
         # Load darknet weights
-        model.load_darknet_weights(opt.weights_path)
-    else:
+        model.load_darknet_weights(opt.pretrained_weights)
+    elif opt.pretrained_weights.endswith(".pth"):
         # Load checkpoint weights
-        model.load_state_dict(torch.load(opt.weights_path))
+        model.load_state_dict(torch.load(opt.pretrained_weights))
+    elif opt.pretrained_weights.endswith(".ckpt"):
+        checkpoint = torch.load(opt.pretrained_weights, map_location=lambda storage, loc: storage)
+        model.load_state_dict(checkpoint['state_dict'])
+        
+    #model = model.model 
 
     model.eval()  # Set in evaluation mode
 
@@ -119,15 +128,16 @@ if __name__ == "__main__":
             unique_labels = detections[:, -1].cpu().unique()
             n_cls_preds = len(unique_labels)
             bbox_colors = colors
-            for x1, y1, x2, y2, conf, cls_conf, cls_pred in detections:
+            for x1, y1, x2, y2, angle, conf, cls_conf, cls_pred in detections:
 
                 print("\t+ Label: %s, Conf: %.5f" % (classes[int(cls_pred)], cls_conf.item()))
 
-                # box_w = x2 - x1
-                # box_h = y2 - y1
+                # New co-ordinates of the rotated bbox
+                xy = rotate_detections(x1, y1, x2, y2, angle)
+                pts = np.array(xy, np.int32).reshape((-1,1,2))
 
-                pts = [[x1,y2], [x2,y2], [x2,y1], [x1,y1]]
-                pts = np.array(pts, np.int32).reshape((-1,1,2))
+                #box_w = x2 - x1
+                #box_h = y2 - y1
 
                 color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
 
@@ -136,12 +146,12 @@ if __name__ == "__main__":
                 #cv2.putText(img, classes[int(cls_pred)], (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX ,  0.8, 1, cv2.LINE_AA)
                 ax.imshow(img[...,::-1]) #convert BGR image to RGB image
 
-                # # Create a Rectangle patch
-                # bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, edgecolor=color, facecolor="none")
-                # # Add the bbox to the plot
-                # ax.add_patch(bbox)
-
-                # # Add label
+                # Create a Rectangle patch
+                #bbox = patches.Polygon(xy, closed=True, linewidth=2, edgecolor=color, facecolor="none")
+                # Add the bbox to the plot
+                #ax.add_patch(bbox)
+                
+                # Add label
                 # plt.text(
                 #     x1,
                 #     y1,
@@ -158,6 +168,4 @@ if __name__ == "__main__":
             plt.gca().yaxis.set_major_locator(NullLocator())
             filename = path.split("/")[-1].split(".")[0]
             plt.savefig(f"output/{filename}.png", bbox_inches="tight", pad_inches=0.0)
-            plt.close()
-
-
+        plt.close()
