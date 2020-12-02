@@ -61,7 +61,7 @@ if __name__ == "__main__":
     prev_time = time.time()
     for batch_i, (img_paths, _ , targets) in enumerate(dataloader):
         
-        targets[..., 2:] = xywh2xyxy(targets[..., 2:])
+        targets[..., 2:6] = xywh2xyxy(targets[..., 2:6])
         targets[..., 2:6] *= opt.img_size
 
         annotations = [targets[...,1:]]
@@ -104,14 +104,15 @@ if __name__ == "__main__":
             n_cls_preds = len(unique_labels)
             bbox_colors = colors
 
-            for cls_pred, x1, y1, x2, y2 in detections:
+            for cls_pred, x1, y1, x2, y2, angle in detections:
 
                 # New co-ordinates of the rotated bbox
-                #xy = rotate_detections(x1, y1, x2, y2, angle)
+                xy = rotate_detections(x1, y1, x2, y2, angle)
                 #Make the co-ordinates compatible for cv2
-                #pts = np.array(xy, np.int32).reshape((-1,1,2))
-                pts = [[x1,y2], [x2,y2], [x2,y1], [x1,y1]]
-                pts = np.array(pts, np.int32).reshape((-1,1,2))
+                pts = np.array(xy, np.int32).reshape((-1,1,2))
+                
+                # pts = [[x1,y2], [x2,y2], [x2,y1], [x1,y1]]
+                # pts = np.array(pts, np.int32).reshape((-1,1,2))
 
                 # box_w = x2 - x1
                 # box_h = y2 - y1
