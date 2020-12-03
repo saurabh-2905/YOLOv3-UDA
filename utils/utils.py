@@ -317,7 +317,29 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
             or box2[i,0]==np.inf or box2[i,1]==np.inf or box2[i,2]==np.inf or box2[i,3]==np.inf:
                 iou = 1e-12
             else:
-                pass
+                rot_box1 = calculate_rotated(b1_cx[0], b1_cy[0], b1_w[0], b1_h[0], angle_1[0])
+                rot_box2 = calculate_rotated(b2_cx[i], b2_cy[i], b2_w[i], b2_h[i], angle_2[i])
+
+                b1_x1, b1_y1 = rot_box1.min(0)[0]
+                b1_x2, b1_y2 = rot_box1.max(0)[0]
+                b2_x1, b2_y1 = rot_box2.min(0)[0]
+                b2_x2, b2_y2 = rot_box2.max(0)[0]
+
+                # get the co-ordinates of the intersection rectangle
+                inter_rect_x1 = torch.max(b1_x1, b2_x1)
+                inter_rect_y1 = torch.max(b1_y1, b2_y1)
+                inter_rect_x2 = torch.min(b1_x2, b2_x2)
+                inter_rect_y2 = torch.min(b1_y2, b2_y2)
+                # Intersection area
+                inter_area = torch.clamp(inter_rect_x2 - inter_rect_x1 + 1, min=0) * torch.clamp(
+                    inter_rect_y2 - inter_rect_y1 + 1, min=0
+                )
+                # Union Area
+                b1_area = (b1_x2 - b1_x1 + 1) * (b1_y2 - b1_y1 + 1)
+                b2_area = (b2_x2 - b2_x1 + 1) * (b2_y2 - b2_y1 + 1)
+
+                iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
+
             iou_all[i] = iou
 
         return iou_all
@@ -330,7 +352,7 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
             #Check if any element equals to infinity
             if box1[i,0]==np.inf or box1[i,1]==np.inf or box1[i,2]==np.inf or box1[i,3]==np.inf \
             or box2[i,0]==np.inf or box2[i,1]==np.inf or box2[i,2]==np.inf or box2[i,3]==np.inf:
-                iou = 1e-16
+                iou = 1e-12
             else:
                 rot_box1 = calculate_rotated(b1_cx[i], b1_cy[i], b1_w[i], b1_h[i], angle_1[i])
                 rot_box2 = calculate_rotated(b2_cx[i], b2_cy[i], b2_w[i], b2_h[i], angle_2[i])
@@ -340,7 +362,7 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
                 b2_x1, b2_y1 = rot_box2.min(0)[0]
                 b2_x2, b2_y2 = rot_box2.max(0)[0]
 
-                # get the corrdinates of the intersection rectangle
+                # get the co-ordinates of the intersection rectangle
                 inter_rect_x1 = torch.max(b1_x1, b2_x1)
                 inter_rect_y1 = torch.max(b1_y1, b2_y1)
                 inter_rect_x2 = torch.min(b1_x2, b2_x2)
