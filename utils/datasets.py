@@ -159,9 +159,11 @@ class ListDataset(Dataset):
 
 
 class ImageAnnotation(Dataset):
-    def __init__(self, folder_path, json_path, multiscale=True, img_size=416, augment=True, normalized_labels=False):
+    def __init__(self, folder_path, json_path, img_size=416, multiscale=True,  augment=True, normalized_labels=False, class_80=False):
         self.files = sorted(glob.glob("%s/*.*" % folder_path))
+        #self.files = [files for files in self.files if files]
         self.img_size = img_size
+        #self.img_norm_bbox = 1280
         self.json_path = json_path
         self.normalized_labels = normalized_labels
         self.augment = augment
@@ -169,7 +171,10 @@ class ImageAnnotation(Dataset):
         self.min_size = self.img_size - 3 * 32
         self.max_size = self.img_size + 3 * 32
         self.batch_count = 0
+        self.yolo = class_80
 
+        self.label_map = dict()
+        self.names = []
         self.img_ids = []
         # self.imgid2info = dict()
         self.imgid2path = dict()
@@ -181,6 +186,7 @@ class ImageAnnotation(Dataset):
         assert len(img_dir) == len(json_path)
         for imdir, jspath in zip(img_dir, json_path):
             self.load_anns(imdir, jspath)
+        self.label_mapping()
 
 
     def load_anns(self, img_dir, json_path):
@@ -200,9 +206,10 @@ class ImageAnnotation(Dataset):
                 ann['bbox'][0] = ann['bbox'][0] + ann['bbox'][2] / 2
                 ann['bbox'][1] = ann['bbox'][1] + ann['bbox'][3] / 2
                 ann['bbox'].append(0)
-                if ann['bbox'][2] > ann['bbox'][3]:
-                    ann['bbox'][2], ann['bbox'][3] = ann['bbox'][3], ann['bbox'][2]
-                    ann['bbox'][4] -= 90
+                if not self.yolo:
+                    if ann['bbox'][2] > ann['bbox'][3]:
+                        ann['bbox'][2], ann['bbox'][3] = ann['bbox'][3], ann['bbox'][2]
+                        ann['bbox'][4] -= 90
                 new_ann = ann['bbox']
             else:
                 # using rotated bounding box datasets. 5 = [cx,cy,w,h,angle]
@@ -212,14 +219,22 @@ class ImageAnnotation(Dataset):
 
                 if new_ann[2] > new_ann[3]:
                     new_ann[2], new_ann[3] = new_ann[3], new_ann[2]
-                    new_ann[4] += 90 - np.finfo(np.float32).eps
+                    new_ann[4] -= 90 if new_ann[4] > 0 else -90
 
             if new_ann[2] == new_ann[3]:
                 new_ann[3] += 1  # force that w < h
 
-            assert new_ann[2] < new_ann[3]
-            assert new_ann[4] >= -90 and new_ann[4] < 90
+            new_ann[4] = np.clip(new_ann[4], -90.0, 90.0 - 1e-14)
 
+            if not self.yolo:
+                assert new_ann[2] < new_ann[3]
+                assert new_ann[4] >= -90 and new_ann[4] < 90
+
+            # Normalize the bbox coordinates between 0 to 1
+            # new_ann[0] /= self.img_norm_bbox
+            # new_ann[1] /= self.img_norm_bbox
+            # new_ann[2] /= self.img_norm_bbox
+            # new_ann[3] /= self.img_norm_bbox
             # override original bounding box with rotated bounding box
             ann['bbox'] = torch.Tensor(new_ann)
             self.imgid2anns[img_id].append(ann)
@@ -227,25 +242,32 @@ class ImageAnnotation(Dataset):
         for img in json_data['images']:
             img_id = img['id']
             assert img_id not in self.imgid2path
-            anns = self.imgid2anns[img_id]
-            # if there is crowd gt, skip this image
-            if self.coco and any(ann['iscrowd'] for ann in anns):
-                continue
 
             self.img_ids.append(img_id)
             self.imgid2path[img_id] = os.path.join(img_dir, img['file_name'])
             # self.imgid2info[img['id']] = img
 
         self.catids = [cat['id'] for cat in json_data['categories']]
+        self.names = [cat['name'] for cat in json_data['categories']]
+
+    def label_mapping(self):
+        for i in range(6):
+            self.label_map[i+1] = i 
 
     def __getitem__(self, index):
         # -------
         # get image
         # -------
-        img_id = self.img_ids[index]
+        self.index = index % len(self.imgid2path)
+        img_id = self.img_ids[self.index]
         img_path = self.imgid2path[img_id]
+        print(img_path)
 
         img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
+        #print(img.shape)
+        #Resize image to fixed size
+        #img = resize(img, 416)
+        #print(img.shape)
 
         if len(img.shape) != 3:
             img = img.unsqueeze(0)
@@ -264,10 +286,17 @@ class ImageAnnotation(Dataset):
              # load unnormalized annotation
             annotations = self.imgid2anns[img_id]
             gt_num = len(annotations)
-            boxes = torch.zero(gt_num,6)
+            boxes = torch.zeros(gt_num,6)
 
             for i, ann in enumerate(annotations):
+                # Normalize the bbox coordinates between 0 to 1
+                # ann['bbox'][0] /= self.img_norm_bbox
+                # ann['bbox'][1] /= self.img_norm_bbox
+                # ann['bbox'][2] /= self.img_norm_bbox
+                # ann['bbox'][3] /= self.img_norm_bbox
+                #print(ann['bbox'])
                 boxes[i,1:] = ann['bbox']
+                #print(boxes[i,1:])
                 boxes[i,0] = self.catids.index(ann['category_id'])
 
             
@@ -287,6 +316,12 @@ class ImageAnnotation(Dataset):
             boxes[:, 3] *= w_factor / padded_w
             boxes[:, 4] *= h_factor / padded_h
 
+            for box_batch in boxes:
+                assert torch.isinf(box_batch[0]) == False
+                assert torch.isinf(box_batch[1]) == False
+                assert torch.isinf(box_batch[2]) == False
+                assert torch.isinf(box_batch[3]) == False 
+
             targets = torch.zeros((len(boxes), 7))
             targets[:, 1:] = boxes
 
@@ -299,12 +334,20 @@ class ImageAnnotation(Dataset):
 
     def collate_fn(self, batch):
         paths, imgs, targets = list(zip(*batch))
-        # Remove empty placeholder targets
-        targets = [boxes for boxes in targets if boxes is not None]
         # Add sample index to targets
         for i, boxes in enumerate(targets):
+            if boxes is None:
+                continue
             boxes[:, 0] = i
-        targets = torch.cat(targets, 0)
+        # Remove empty placeholder targets
+        targets = [boxes for boxes in targets if boxes is not None]
+        #targets = torch.cat(targets, 0)
+
+        try:
+            targets = torch.cat(targets, 0)
+        except RuntimeError as e_inst:
+            targets = None # No boxes for an image
+            
         # Selects new image size every tenth batch
         if self.multiscale and self.batch_count % 10 == 0:
             self.img_size = random.choice(range(self.min_size, self.max_size + 1, 32))

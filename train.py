@@ -65,7 +65,14 @@ if __name__ == "__main__":
     data_config = parse_data_config(opt.data_config)
     train_path = data_config["train"]
     valid_path = data_config["valid"]
+    train_annpath = data_config["json_train"]
+    valid_annpath = data_config["json_val"]
     class_names = load_classes(data_config["names"])
+
+    if len(class_names) == 80:
+        class_80 = True
+    else:
+        class_80 = False
 
     # Initiate model
     model = Darknet(opt.model_def).to(device)
@@ -79,7 +86,7 @@ if __name__ == "__main__":
             model.load_darknet_weights(opt.pretrained_weights)
 
     # Get dataloader
-    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training)
+    dataset = ImageAnnotation(folder_path=train_path, json_path=train_annpath, img_size=opt.img_size, augment=True, multiscale=opt.multiscale_training, class_80=class_80)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -111,6 +118,8 @@ if __name__ == "__main__":
     for epoch in range(opt.epochs):
         model.train()
         start_time = time.time()
+        train_acc_epoch = 0
+        train_loss_epoch = 0
         for batch_i, (_, imgs, targets) in enumerate(dataloader):
             batches_done = len(dataloader) * epoch + batch_i
 
@@ -134,7 +143,6 @@ if __name__ == "__main__":
             metric_table = [["Metrics", *[f"YOLO Layer {i}" for i in range(len(model.yolo_layers))]]]
 
             # Log metrics at each YOLO layer
-            batch_acc = 0
             for i, metric in enumerate(metrics):
                 formats = {m: "%.6f" for m in metrics}
                 formats["grid_size"] = "%2d"
@@ -144,6 +152,7 @@ if __name__ == "__main__":
 
             # Tensorboard logging
             tensorboard_log = []
+            batch_acc = 0
             for j, yolo in enumerate(model.yolo_layers):
                 for name, metric in yolo.metrics.items():
                     if name != "grid_size":
@@ -152,13 +161,18 @@ if __name__ == "__main__":
                             batch_acc += metric
 
             batch_acc = batch_acc / 3
-            tensorboard_log += [("loss", loss.item())]
-            tensorboard_log += [("accu", batch_acc)]
+            tensorboard_log += [("batch_loss", loss.item())]
+            tensorboard_log += [("batch_accu", batch_acc)]
 
-                logger.list_of_scalars_summary(tensorboard_log, batches_done)
+            logger.list_of_scalars_summary(tensorboard_log, batches_done)
+
+            # Accumulate loss for every batch of epoch
+            train_acc_epoch += batch_acc
+            train_loss_epoch += loss.item()
 
             log_str += AsciiTable(metric_table).table
             log_str += f"\nTotal loss {loss.item()}"
+            log_str += f"\nTotal loss {batch_acc}"
 
             # Determine approximate time left for epoch
             epoch_batches_left = len(dataloader) - (batch_i + 1)
@@ -169,17 +183,32 @@ if __name__ == "__main__":
 
             model.seen += imgs.size(0)
 
+        # Calculate loss for each epoch
+        train_acc_epoch = train_acc_epoch / len(dataloader)
+        train_loss_epoch = train_loss_epoch / len(dataloader)
+
+        # Logging values to Tensorboard
+        logger.scalar_summary("acc", train_acc_epoch, epoch)
+        logger.scalar_summary("loss", train_loss_epoch, epoch)
+
+        # Print trainin loss and accuracy for each epoch
+        print(f'Training Accuracy for Epoch {epoch}: {train_acc_epoch}')
+        print(f'Training Loss for Epoch {epoch}: {train_loss_epoch}')
+
+
         if epoch % opt.evaluation_interval == 0:
             print("\n---- Evaluating Model ----")
             # Evaluate the model on the validation set
-            precision, recall, AP, f1, ap_class = evaluate(
+            precision, recall, AP, f1, ap_class, val_acc, val_loss = evaluate(
                 model,
                 path=valid_path,
+                json_path=valid_annpath,
                 iou_thres=0.5,
                 conf_thres=0.5,
                 nms_thres=0.5,
                 img_size=opt.img_size,
                 batch_size=8,
+                class_80=class_80
             )
             evaluation_metrics = [
                 ("val_precision", precision.mean()),
@@ -187,7 +216,9 @@ if __name__ == "__main__":
                 ("val_mAP", AP.mean()),
                 ("val_f1", f1.mean()),
             ]
-            logger.list_of_scalars_summary(evaluation_metrics, epoch)
+            logger.val_list_of_scalars_summary(evaluation_metrics, epoch)
+            logger.val_scalar_summary("acc", val_acc, epoch)
+            logger.val_scalar_summary("loss", val_loss, epoch)
 
             # Print class APs and mAP
             ap_table = [["Index", "Class name", "AP"]]
@@ -195,6 +226,8 @@ if __name__ == "__main__":
                 ap_table += [[c, class_names[c], "%.5f" % AP[i]]]
             print(AsciiTable(ap_table).table)
             print(f"---- mAP {AP.mean()}")
+
+            #Log image detections
 
         if epoch % opt.checkpoint_interval == 0:
             torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)
