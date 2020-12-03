@@ -186,11 +186,12 @@ class YOLOLayer(nn.Module):
         pred_boxes[..., 3] = torch.exp(h.data) * self.anchor_h
         pred_boxes[..., 4] =   angle * self.angle_range - (self.angle_range / 2)
 
-        pred_boxes[...,:4] = pred_boxes[...,:4] * self.stride
+        pred_boxes_out = pred_boxes.detach().clone()
+        pred_boxes_out[...,:4] = pred_boxes_out[...,:4] * self.stride
 
         output = torch.cat(
             (
-                pred_boxes.view(num_samples, -1, 5) ,
+                pred_boxes_out.view(num_samples, -1, 5) ,
                 pred_conf.view(num_samples, -1, 1),
                 pred_cls.view(num_samples, -1, self.num_classes),
             ),
