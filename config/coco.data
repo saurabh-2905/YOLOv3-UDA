@@ -1,6 +1,9 @@
-classes= 80
-train=data/coco/trainvalno5k.txt
-valid=data/coco/5k.txt
-names=data/coco.names
+classes= 6
+train=/localdata/saurabh/dataset/theodore_v3/images/
+valid=/localdata/saurabh/dataset/FES/JPEGImages/
+json_train=/localdata/saurabh/dataset/theodore_v3/coco/annotations/instances.json
+json_val=/localdata/saurabh/dataset/FES/coco/annotations/instances_default_with_rbbox.json
+names=data/class.names
 backup=backup/
 eval=coco
+
