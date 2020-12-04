@@ -26,52 +26,17 @@ from matplotlib.ticker import NullLocator
 
 import cv2
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--image_folder", type=str, default="/localdata/saurabh/yolov3/data/test/images", help="path to dataset")
-    parser.add_argument("--model_def", type=str, default="config/yolov3-custom.cfg", help="path to model definition file")
-    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/rotated_new/97_e2.pth", help="path to weights file")
-    parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
-    parser.add_argument("--conf_thres", type=float, default=0.7, help="object confidence threshold")
-    parser.add_argument("--nms_thres", type=float, default=0.4, help="iou thresshold for non-maximum suppression")
-    parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
-    parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
-    parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
-    parser.add_argument("--checkpoint_model", type=str, help="path to checkpoint model")
-    opt = parser.parse_args()
-    print(opt)
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    os.makedirs("output", exist_ok=True)
-
-    # Set up model
-    model = Darknet(opt.model_def, img_size=opt.img_size).to(device)
-
-    #model = MyModel(model, opt)
-
-    if opt.pretrained_weights.endswith(".weights"):
-        # Load darknet weights
-        model.load_darknet_weights(opt.pretrained_weights)
-    elif opt.pretrained_weights.endswith(".pth"):
-        # Load checkpoint weights
-        model.load_state_dict(torch.load(opt.pretrained_weights))
-    elif opt.pretrained_weights.endswith(".ckpt"):
-        checkpoint = torch.load(opt.pretrained_weights, map_location=lambda storage, loc: storage)
-        model.load_state_dict(checkpoint['state_dict'])
-        
-    #model = model.model 
-
+def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, out_dir, batch_size=1, n_cpu=0,):
     model.eval()  # Set in evaluation mode
 
     dataloader = DataLoader(
-        ImageFolder(opt.image_folder, img_size=opt.img_size),
-        batch_size=opt.batch_size,
+        ImageFolder(image_folder, img_size=img_size),
+        batch_size=batch_size,
         shuffle=False,
-        num_workers=opt.n_cpu,
+        num_workers=n_cpu,
     )
 
-    classes = load_classes(opt.class_path)  # Extracts class labels from file
+    classes = load_classes(class_path)  # Extracts class labels from file
 
     Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
 
@@ -80,6 +45,7 @@ if __name__ == "__main__":
 
     print("\nPerforming object detection:")
     prev_time = time.time()
+
     for batch_i, (img_paths, input_imgs) in enumerate(dataloader):
         # Configure input
         input_imgs = Variable(input_imgs.type(Tensor))
@@ -87,7 +53,7 @@ if __name__ == "__main__":
         # Get detections
         with torch.no_grad():
             detections = model(input_imgs)
-            detections = non_max_suppression(detections, opt.conf_thres, opt.nms_thres)
+            detections = non_max_suppression(detections, conf_thres, nms_thres)
 
         # Log progress
         current_time = time.time()
@@ -99,12 +65,8 @@ if __name__ == "__main__":
         imgs.extend(img_paths)
         img_detections.extend(detections)
 
-        if batch_i == 0:
+        if batch_i == 20:
             break
-
-    # Bounding-box colors
-    # cmap = plt.get_cmap("tab20b")
-    # colors = [cmap(i) for i in np.linspace(0, 1, 20)]
 
     colors = [(0,134,213), (220,0,213), (255,0,0), (255, 233, 0), (0,255,0), (255,0,0)]
 
@@ -167,5 +129,56 @@ if __name__ == "__main__":
             plt.gca().xaxis.set_major_locator(NullLocator())
             plt.gca().yaxis.set_major_locator(NullLocator())
             filename = path.split("/")[-1].split(".")[0]
-            plt.savefig(f"output/{filename}.png", bbox_inches="tight", pad_inches=0.0)
+            os.makedirs(f'output/{out_dir}',exist_ok=True)
+            plt.savefig(f"output/{out_dir}/{filename}.png", bbox_inches="tight", pad_inches=0.0)
         plt.close()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--image_folder", type=str, default="/localdata/saurabh/yolov3/data/test/images", help="path to dataset")
+    parser.add_argument("--model_def", type=str, default="config/yolov3-custom.cfg", help="path to model definition file")
+    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/rotated_new/97_e2.pth", help="path to weights file")
+    parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
+    parser.add_argument("--conf_thres", type=float, default=0.7, help="object confidence threshold")
+    parser.add_argument("--nms_thres", type=float, default=0.4, help="iou thresshold for non-maximum suppression")
+    parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
+    parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
+    parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
+    parser.add_argument("--checkpoint_model", type=str, help="path to checkpoint model")
+    opt = parser.parse_args()
+    print(opt)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    os.makedirs("output", exist_ok=True)
+
+    # Set up model
+    model = Darknet(opt.model_def, img_size=opt.img_size).to(device)
+
+    #model = MyModel(model, opt)
+
+    if opt.pretrained_weights.endswith(".weights"):
+        # Load darknet weights
+        model.load_darknet_weights(opt.pretrained_weights)
+    elif opt.pretrained_weights.endswith(".pth"):
+        # Load checkpoint weights
+        model.load_state_dict(torch.load(opt.pretrained_weights))
+    elif opt.pretrained_weights.endswith(".ckpt"):
+        checkpoint = torch.load(opt.pretrained_weights, map_location=lambda storage, loc: storage)
+        model.load_state_dict(checkpoint['state_dict'])
+        
+    #model = model.model 
+
+
+    draw_bbox(model=model,
+            image_folder=opt.image_folder,
+            img_size=opt.img_size,
+            class_path=opt.class_path,
+            conf_thres=opt.conf_thres,
+            nms_thres=opt.nms_thres,
+            out_dir='detection',
+            batch_size=opt.batch_size,
+            n_cpu=opt.n_cpu)
+
+    
