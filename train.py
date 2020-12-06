@@ -6,6 +6,7 @@ from utils.utils import *
 from utils.datasets import *
 from utils.parse_config import *
 from test import evaluate
+from detect import draw_bbox
 
 from terminaltables import AsciiTable
 
@@ -105,6 +106,7 @@ if __name__ == "__main__":
         "y",
         "w",
         "h",
+        "angle"
         "conf",
         "cls",
         "cls_acc",
@@ -227,7 +229,15 @@ if __name__ == "__main__":
             print(AsciiTable(ap_table).table)
             print(f"---- mAP {AP.mean()}")
 
-            #Log image detections
+            #Save image detections
+            draw_bbox(model=model,
+                    image_folder=valid_path,
+                    img_size=opt.img_size,
+                    class_path=data_config["names"],
+                    conf_thres=0.8,
+                    nms_thres=0.8,
+                    n_cpu=opt.n_cpu,
+                    out_dir='training')
 
         if epoch % opt.checkpoint_interval == 0:
             torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)
