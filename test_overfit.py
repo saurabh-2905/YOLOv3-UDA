@@ -20,15 +20,18 @@ from torch.autograd import Variable
 import torch.optim as optim
 
 
-def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size, batch_size, class_80):
+def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size, class_80, json_path=None):
     model.eval()
 
-    # Get dataloader
-    dataset = ImageAnnotation(folder_path=path, json_path=json_path, img_size=img_size, augment=False, multiscale=False, class_80=class_80)
+    dataset = ListDataset(path, augment=False, multiscale=False, normalized_labels=False)
     dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collate_fn
-    )
-
+        dataset,
+        batch_size=1,
+        shuffle=False,
+        num_workers=0,
+        pin_memory=False,
+        collate_fn=dataset.collate_fn,
+    ) #
     Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -71,9 +74,6 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
         # # Save image paths and detections
         # img_paths.extend(path)
         # img_detections.extend(outputs)
-
-        # if batch_i == 3:
-        #         break
 
     # Calculat validation loss and accuracy
     val_acc_epoch += val_acc_batch / len(dataloader)
