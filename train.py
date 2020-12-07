@@ -11,7 +11,7 @@ from detect import draw_bbox
 from terminaltables import AsciiTable
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6'
 import sys
 import time
 import datetime
@@ -40,13 +40,13 @@ def adjust_learning_rate(optimizer, epoch):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=1000, help="number of epochs")
-    parser.add_argument("--lr", type=float, default=1e-2, help="learning rate")
-    parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
+    parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
+    parser.add_argument("--batch_size", type=int, default=10, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
     parser.add_argument("--model_def", type=str, default="config/yolov3-custom.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
     parser.add_argument("--pretrained_weights", type=str, default="weights/darknet53.conv.74", help="if specified starts from checkpoint model")
-    parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
+    parser.add_argument("--n_cpu", type=int, default=4, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
     parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between saving model weights")
     parser.add_argument("--evaluation_interval", type=int, default=1, help="interval evaluations on validation set")
@@ -57,7 +57,9 @@ if __name__ == "__main__":
 
     logger = Logger("logs")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
+    torch.cuda.set_device(device.index)
+    print(device)
 
     os.makedirs("output", exist_ok=True)
     os.makedirs("checkpoints", exist_ok=True)
@@ -106,7 +108,7 @@ if __name__ == "__main__":
         "y",
         "w",
         "h",
-        "angle"
+        "angle",
         "conf",
         "cls",
         "cls_acc",
@@ -163,8 +165,8 @@ if __name__ == "__main__":
                             batch_acc += metric
 
             batch_acc = batch_acc / 3
-            tensorboard_log += [("batch_loss", loss.item())]
-            tensorboard_log += [("batch_accu", batch_acc)]
+            tensorboard_log += [("loss", loss.item())]
+            tensorboard_log += [("accu", batch_acc)]
 
             logger.list_of_scalars_summary(tensorboard_log, batches_done)
 
@@ -174,7 +176,7 @@ if __name__ == "__main__":
 
             log_str += AsciiTable(metric_table).table
             log_str += f"\nTotal loss {loss.item()}"
-            log_str += f"\nTotal loss {batch_acc}"
+            log_str += f"\nTotal accu {batch_acc}"
 
             # Determine approximate time left for epoch
             epoch_batches_left = len(dataloader) - (batch_i + 1)
@@ -185,18 +187,23 @@ if __name__ == "__main__":
 
             model.seen += imgs.size(0)
 
+            # if batch_i == 10:
+            #     break
+
         # Calculate loss for each epoch
         train_acc_epoch = train_acc_epoch / len(dataloader)
         train_loss_epoch = train_loss_epoch / len(dataloader)
 
         # Logging values to Tensorboard
-        logger.scalar_summary("acc", train_acc_epoch, epoch)
-        logger.scalar_summary("loss", train_loss_epoch, epoch)
+        logger.scalar_summary("epoch_acc", train_acc_epoch, epoch)
+        logger.scalar_summary("epoch_loss", train_loss_epoch, epoch)
 
         # Print trainin loss and accuracy for each epoch
         print(f'Training Accuracy for Epoch {epoch}: {train_acc_epoch}')
         print(f'Training Loss for Epoch {epoch}: {train_loss_epoch}')
 
+        if epoch % opt.checkpoint_interval == 0:
+            torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)
 
         if epoch % opt.evaluation_interval == 0:
             print("\n---- Evaluating Model ----")
@@ -229,15 +236,14 @@ if __name__ == "__main__":
             print(AsciiTable(ap_table).table)
             print(f"---- mAP {AP.mean()}")
 
-            #Save image detections
-            draw_bbox(model=model,
-                    image_folder=valid_path,
-                    img_size=opt.img_size,
-                    class_path=data_config["names"],
-                    conf_thres=0.8,
-                    nms_thres=0.8,
-                    n_cpu=opt.n_cpu,
-                    out_dir='training')
+            # #Save image detections
+            # draw_bbox(model=model,
+            #         image_folder=valid_path,
+            #         img_size=opt.img_size,
+            #         class_path=data_config["names"],
+            #         conf_thres=0.8,
+            #         nms_thres=0.8,
+            #         n_cpu=opt.n_cpu,
+            #         out_dir='training')
 
-        if epoch % opt.checkpoint_interval == 0:
-            torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)
+        
