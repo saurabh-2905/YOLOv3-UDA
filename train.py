@@ -40,12 +40,12 @@ def adjust_learning_rate(optimizer, epoch):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=1000, help="number of epochs")
-    parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
+    parser.add_argument("--lr", type=float, default=5e-4, help="learning rate")
     parser.add_argument("--batch_size", type=int, default=10, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
     parser.add_argument("--model_def", type=str, default="config/yolov3-custom.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
-    parser.add_argument("--pretrained_weights", type=str, default="weights/darknet53.conv.74", help="if specified starts from checkpoint model")
+    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/all_images/36_e3.pth", help="if specified starts from checkpoint model")
     parser.add_argument("--n_cpu", type=int, default=4, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
     parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between saving model weights")
@@ -213,7 +213,7 @@ if __name__ == "__main__":
                 path=valid_path,
                 json_path=valid_annpath,
                 iou_thres=0.5,
-                conf_thres=0.5,
+                conf_thres=0.05,
                 nms_thres=0.5,
                 img_size=opt.img_size,
                 batch_size=8,
@@ -226,8 +226,8 @@ if __name__ == "__main__":
                 ("val_f1", f1.mean()),
             ]
             logger.val_list_of_scalars_summary(evaluation_metrics, epoch)
-            logger.val_scalar_summary("acc", val_acc, epoch)
-            logger.val_scalar_summary("loss", val_loss, epoch)
+            logger.val_scalar_summary("epoch_acc", val_acc, epoch)
+            logger.val_scalar_summary("epoch_loss", val_loss, epoch)
 
             # Print class APs and mAP
             ap_table = [["Index", "Class name", "AP"]]
