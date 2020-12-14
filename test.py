@@ -6,6 +6,7 @@ from utils.datasets import *
 from utils.parse_config import *
 
 import os
+#os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6'
 import sys
 import time
 import datetime
@@ -30,7 +31,7 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
     )
 
     Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
 
     labels = []
     sample_metrics = []  # List of tuples (TP, confs, pred)
@@ -72,12 +73,12 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
         # img_paths.extend(path)
         # img_detections.extend(outputs)
 
-        # if batch_i == 3:
+        # if batch_i == 0:
         #         break
 
     # Calculat validation loss and accuracy
-    val_acc_epoch += val_acc_batch / len(dataloader)
-    val_loss_epoch += loss.item() / len(dataloader)
+    val_acc_epoch = val_acc_batch / len(dataloader)
+    val_loss_epoch = val_loss_epoch / len(dataloader)
     # Concatenate sample statistics
     true_positives, pred_scores, pred_labels = [np.concatenate(x, 0) for x in list(zip(*sample_metrics))]
     precision, recall, AP, f1, ap_class = ap_per_class(true_positives, pred_scores, pred_labels, labels)
@@ -90,17 +91,17 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
     parser.add_argument("--model_def", type=str, default="config/yolov3-custom.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
-    parser.add_argument("--weights_path", type=str, default="checkpoints/", help="path to weights file")
+    parser.add_argument("--weights_path", type=str, default="checkpoints/all_images/36_e3.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
     parser.add_argument("--iou_thres", type=float, default=0.5, help="iou threshold required to qualify as detected")
-    parser.add_argument("--conf_thres", type=float, default=0.1, help="object confidence threshold")
+    parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
     parser.add_argument("--nms_thres", type=float, default=0.5, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
     opt = parser.parse_args()
     print(opt)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
 
     data_config = parse_data_config(opt.data_config)
     valid_path = data_config["valid"]
