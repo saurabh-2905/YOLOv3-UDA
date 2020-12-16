@@ -5,6 +5,8 @@ import json
 import sys
 import numpy as np
 from PIL import Image
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 import torch
 import torch.nn.functional as F
 from collections import defaultdict
@@ -261,7 +263,7 @@ class ImageAnnotation(Dataset):
         self.index = index % len(self.imgid2path)
         img_id = self.img_ids[self.index]
         img_path = self.imgid2path[img_id]
-        print(img_path)
+        #print(img_path)
 
         img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
         #print(img.shape)

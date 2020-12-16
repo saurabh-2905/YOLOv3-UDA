@@ -178,7 +178,7 @@ def get_batch_statistics(outputs, targets, iou_threshold):
                 if pred_label not in target_labels:
                     continue
 
-                # iou, box_index = bbox_iou(pred_box.unsqueeze(0), target_boxes).max(0)     # Only checkes once, later if detection with better iou arrives will be ignored
+                #iou, box_index = bbox_iou(pred_box.unsqueeze(0), target_boxes).max(0)     # Only checkes once, later if detection with better iou arrives will be ignored
                 iou = iou_rotated(pred_box.unsqueeze(0), target_boxes)
                 mask_matched = (target_labels == pred_label) & (iou >= iou_threshold) 
 
@@ -280,12 +280,14 @@ def bbox_iou(box1, box2, x1y1x2y2=True):
 
 def calculate_rotated(x, y, w, h, angle):
     '''
-    im: image numpy array, shape(h,w,3), RGB
     angle: degree
     '''
-    w = w.detach().numpy()
-    h = h.detach().numpy()
-    c, s = np.cos((angle).detach().numpy()/180*np.pi), np.sin((angle).detach().numpy()/180*np.pi)
+    FloatTensor = torch.cuda.FloatTensor if x.is_cuda else torch.FloatTensor
+
+    w = w.item()
+    h = h.item()
+    #w, h = w.numpy(), h.numpy()
+    c, s = np.cos(angle.item()/180*np.pi), np.sin(angle.item()/180*np.pi)
     R = np.asarray([[c, s], [-s, c]])
     pts = np.asarray([[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]])
     rot_pts = []
@@ -426,6 +428,11 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
             detections = detections[~invalid]
         if keep_boxes:
             output[image_i] = torch.stack(keep_boxes)
+    
+    for out in output:
+        if out == None:
+            output = torch.zeros_like(prediction)
+            break
 
     return output
 
