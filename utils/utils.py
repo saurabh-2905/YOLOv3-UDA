@@ -293,7 +293,7 @@ def calculate_rotated(x, y, w, h, angle):
     rot_pts = []
     for pt in pts:
         rot_pts.append(([x, y] + pt @ R).astype(float))
-    contours = torch.FloatTensor([rot_pts[0], rot_pts[1], rot_pts[2], rot_pts[3]])
+    contours = FloatTensor([rot_pts[0], rot_pts[1], rot_pts[2], rot_pts[3]])
     
     return contours
 
