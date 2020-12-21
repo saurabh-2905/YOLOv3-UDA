@@ -13,12 +13,9 @@ checkpoints
 .vscode
 get-pip.py
 data
-Visualization tool.ipynb
-Visualization tool-checkpoint.ipynb
 logs
 data/test
 download.png
 logs_old
-Untitled.ipynb
 .ipynb_checkpoints/Untitled-checkpoint.ipynb
 config/real.data
