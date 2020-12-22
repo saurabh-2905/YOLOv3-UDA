@@ -1,4 +1,6 @@
 classes= 6
-train=data/test/single_path.txt
-valid=data/custom/valid.txt
+train=data/custom/train_paths.txt
+valid=data/custom/val_paths.txt
+json_train = None 
+json_val = None
 names=data/class.names
