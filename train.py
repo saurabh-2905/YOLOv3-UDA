@@ -206,44 +206,45 @@ if __name__ == "__main__":
             torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)
 
         if epoch % opt.evaluation_interval == 0:
-            print("\n---- Evaluating Model ----")
-            # Evaluate the model on the validation set
-            precision, recall, AP, f1, ap_class, val_acc, val_loss = evaluate(
-                model,
-                path=valid_path,
-                json_path=valid_annpath,
-                iou_thres=0.5,
-                conf_thres=0.05,
-                nms_thres=0.5,
-                img_size=opt.img_size,
-                batch_size=8,
-                class_80=class_80
-            )
-            evaluation_metrics = [
-                ("val_precision", precision.mean()),
-                ("val_recall", recall.mean()),
-                ("val_mAP", AP.mean()),
-                ("val_f1", f1.mean()),
-            ]
-            logger.val_list_of_scalars_summary(evaluation_metrics, epoch)
-            logger.val_scalar_summary("epoch_acc", val_acc, epoch)
-            logger.val_scalar_summary("epoch_loss", val_loss, epoch)
+            if epoch != 0:
+                print("\n---- Evaluating Model ----")
+                # Evaluate the model on the validation set
+                precision, recall, AP, f1, ap_class, val_acc, val_loss = evaluate(
+                    model,
+                    path=valid_path,
+                    json_path=valid_annpath,
+                    iou_thres=0.5,
+                    conf_thres=0.1,
+                    nms_thres=0.5,
+                    img_size=opt.img_size,
+                    batch_size=8,
+                    class_80=class_80
+                )
+                evaluation_metrics = [
+                    ("val_precision", precision.mean()),
+                    ("val_recall", recall.mean()),
+                    ("val_mAP", AP.mean()),
+                    ("val_f1", f1.mean()),
+                ]
+                logger.val_list_of_scalars_summary(evaluation_metrics, epoch)
+                logger.val_scalar_summary("epoch_acc", val_acc, epoch)
+                logger.val_scalar_summary("epoch_loss", val_loss, epoch)
 
-            # Print class APs and mAP
-            ap_table = [["Index", "Class name", "AP"]]
-            for i, c in enumerate(ap_class):
-                ap_table += [[c, class_names[c], "%.5f" % AP[i]]]
-            print(AsciiTable(ap_table).table)
-            print(f"---- mAP {AP.mean()}")
+                # Print class APs and mAP
+                ap_table = [["Index", "Class name", "AP"]]
+                for i, c in enumerate(ap_class):
+                    ap_table += [[c, class_names[c], "%.5f" % AP[i]]]
+                print(AsciiTable(ap_table).table)
+                print(f"---- mAP {AP.mean()}")
 
-            # #Save image detections
-            # draw_bbox(model=model,
-            #         image_folder=valid_path,
-            #         img_size=opt.img_size,
-            #         class_path=data_config["names"],
-            #         conf_thres=0.8,
-            #         nms_thres=0.8,
-            #         n_cpu=opt.n_cpu,
-            #         out_dir='training')
+                # #Save image detections
+                # draw_bbox(model=model,
+                #         image_folder=valid_path,
+                #         img_size=opt.img_size,
+                #         class_path=data_config["names"],
+                #         conf_thres=0.8,
+                #         nms_thres=0.8,
+                #         n_cpu=opt.n_cpu,
+                #         out_dir='training')
 
         
