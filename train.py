@@ -191,8 +191,8 @@ if __name__ == "__main__":
             #     break
 
         # Calculate loss for each epoch
-        train_acc_epoch = train_acc_epoch / len(dataloader)
-        train_loss_epoch = train_loss_epoch / len(dataloader)
+        train_acc_epoch = train_acc_epoch / batch_i
+        train_loss_epoch = train_loss_epoch / batch_i
 
         # Logging values to Tensorboard
         logger.scalar_summary("epoch_acc", train_acc_epoch, epoch)
