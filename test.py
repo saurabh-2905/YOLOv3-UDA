@@ -77,8 +77,8 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
         #         break
 
     # Calculat validation loss and accuracy
-    val_acc_epoch = val_acc_batch / len(dataloader)
-    val_loss_epoch = val_loss_epoch / len(dataloader)
+    val_acc_epoch = val_acc_batch / (batch_i+1)
+    val_loss_epoch = val_loss_epoch / (batch_i+1)
     # Concatenate sample statistics
     true_positives, pred_scores, pred_labels = [np.concatenate(x, 0) for x in list(zip(*sample_metrics))]
     precision, recall, AP, f1, ap_class = ap_per_class(true_positives, pred_scores, pred_labels, labels)
