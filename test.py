@@ -120,7 +120,7 @@ if __name__ == "__main__":
         model.load_darknet_weights(opt.weights_path)
     else:
         # Load checkpoint weights
-        model.load_state_dict(torch.load(opt.weights_path))
+        model.load_state_dict(torch.load(opt.weights_path, map_location=f'cuda:{device.index}'))
 
     print("Compute mAP...")
 
