@@ -56,8 +56,8 @@ if __name__ == "__main__":
     print(opt)
 
     logger = Logger("logs")
-
-    device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
+    gpu_no = 5
+    device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
     torch.cuda.set_device(device.index)
     print(device)
 
@@ -218,7 +218,8 @@ if __name__ == "__main__":
                     nms_thres=0.5,
                     img_size=opt.img_size,
                     batch_size=8,
-                    class_80=class_80
+                    class_80=class_80,
+                    gpu_num=gpu_no
                 )
                 evaluation_metrics = [
                     ("val_precision", precision.mean()),

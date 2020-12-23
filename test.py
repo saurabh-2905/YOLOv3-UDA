@@ -21,7 +21,7 @@ from torch.autograd import Variable
 import torch.optim as optim
 
 
-def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size, batch_size, class_80):
+def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size, batch_size, class_80, gpu_num):
     model.eval()
 
     # Get dataloader
@@ -31,7 +31,7 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
     )
 
     Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
-    device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
+    device = torch.device(f"cuda:{gpu_num}" if torch.cuda.is_available() else "cpu")
 
     labels = []
     sample_metrics = []  # List of tuples (TP, confs, pred)
@@ -133,7 +133,8 @@ if __name__ == "__main__":
         nms_thres=opt.nms_thres,
         img_size=opt.img_size,
         batch_size=opt.batch_size,
-        class_80=class_80
+        class_80=class_80,
+        gpu_num=device.index
     )
 
     print("Average Precisions:")
