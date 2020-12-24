@@ -88,19 +88,8 @@ if __name__ == "__main__":
         else:
             model.load_darknet_weights(opt.pretrained_weights)
 
-    # # Get dataloader
-    # dataset = ImageAnnotation(folder_path=train_path, json_path=train_annpath, img_size=opt.img_size, augment=True, multiscale=opt.multiscale_training, class_80=class_80)
-    # dataloader = torch.utils.data.DataLoader(
-    #     dataset,
-    #     batch_size=opt.batch_size,
-    #     shuffle=True,
-    #     num_workers=opt.n_cpu,
-    #     pin_memory=True,
-    #     collate_fn=dataset.collate_fn,
-    # )
-
     # Get dataloader
-    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False)
+    dataset = ImageAnnotation(folder_path=train_path, json_path=train_annpath, img_size=opt.img_size, augment=True, multiscale=opt.multiscale_training, class_80=class_80)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -109,6 +98,17 @@ if __name__ == "__main__":
         pin_memory=True,
         collate_fn=dataset.collate_fn,
     )
+
+    # # Get dataloader
+    # dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False)
+    # dataloader = torch.utils.data.DataLoader(
+    #     dataset,
+    #     batch_size=opt.batch_size,
+    #     shuffle=True,
+    #     num_workers=opt.n_cpu,
+    #     pin_memory=True,
+    #     collate_fn=dataset.collate_fn,
+    # )
 
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
 
@@ -225,7 +225,7 @@ if __name__ == "__main__":
                     path=valid_path,
                     json_path=valid_annpath,
                     iou_thres=0.5,
-                    conf_thres=0.01,
+                    conf_thres=0.1,
                     nms_thres=0.5,
                     img_size=opt.img_size,
                     batch_size=8,

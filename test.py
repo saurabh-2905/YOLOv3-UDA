@@ -24,21 +24,21 @@ import torch.optim as optim
 def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size, batch_size, class_80, gpu_num):
     model.eval()
 
-    # # Get dataloader
-    # dataset = ImageAnnotation(folder_path=path, json_path=json_path, img_size=img_size, augment=False, multiscale=False, class_80=class_80)
-    # dataloader = torch.utils.data.DataLoader(
-    #     dataset, batch_size=batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collate_fn
-    # )
-
-    dataset = ListDataset(path, augment=False, multiscale=False, normalized_labels=False)
+    # Get dataloader
+    dataset = ImageAnnotation(folder_path=path, json_path=json_path, img_size=img_size, augment=False, multiscale=False, class_80=class_80)
     dataloader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=4,
-        pin_memory=True,
-        collate_fn=dataset.collate_fn,
+        dataset, batch_size=batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collate_fn
     )
+
+    # dataset = ListDataset(path, augment=False, multiscale=False, normalized_labels=False)
+    # dataloader = torch.utils.data.DataLoader(
+    #     dataset,
+    #     batch_size=batch_size,
+    #     shuffle=False,
+    #     num_workers=4,
+    #     pin_memory=True,
+    #     collate_fn=dataset.collate_fn,
+    # )
 
     Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
     device = torch.device(f"cuda:{gpu_num}" if torch.cuda.is_available() else "cpu")
