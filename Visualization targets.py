@@ -28,7 +28,7 @@ import cv2
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_folder", type=str, default="data/test/paths.txt", help="path to dataset")    
+    parser.add_argument("--image_folder", type=str, default="data/custom/val_paths.txt", help="path to dataset")    
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
@@ -75,6 +75,9 @@ if __name__ == "__main__":
         # Save image and detections
         imgs.extend(img_paths)
         img_detections.extend(annotations)
+
+        if batch_i == 4:
+            break
 
     # Bounding-box colors
     # cmap = plt.get_cmap("tab20b")
@@ -146,5 +149,5 @@ if __name__ == "__main__":
             plt.gca().xaxis.set_major_locator(NullLocator())
             plt.gca().yaxis.set_major_locator(NullLocator())
             filename = path.split("/")[-1].split(".")[0]
-            plt.savefig(f"output/targets/{filename}.png", bbox_inches="tight", pad_inches=0.0)
+            plt.savefig(f"output/targets/rotated/{filename}.png", bbox_inches="tight", pad_inches=0.0)
         plt.close()
