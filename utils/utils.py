@@ -192,49 +192,41 @@ def get_batch_statistics(outputs, targets, iou_threshold):
         batch_metrics.append([true_positives, pred_scores, pred_labels])
     return batch_metrics
 
-def rotate_detections(x1, y1, x2, y2, angle):
+def rotate_detections(x1, y1, x2, y2, angle, xyxy=True):
 
     FloatTensor = torch.cuda.FloatTensor if x1.is_cuda else torch.FloatTensor
 
-    b1_x1, b1_y1, b1_x2, b1_y2, angle_1 = x1, y1, x2, y2, angle 
+    if xyxy:
+        w, h = x2 - x1, y2 - y1
+        x, y = x1 + w/2, y1 + h/2   
+    else:
+        # Get the coordinates of bounding boxes
+        x, y, w, h = x1, y1, x2, y2 
 
     # Get co-ordinates for rotated angle
-    if not b1_x1.size():
-        # Construct a Polygon
-        rotated_box1 = Polygon([(b1_x1, b1_y2), (b1_x2, b1_y2), (b1_x2, b1_y1), (b1_x1, b1_y1)])
+    if not x.size():
 
-        #Check Validity of Polygon and clean if invalid geometry
-        if rotated_box1.is_valid == False:
-            explain_validity(rotated_box1)
-            rotated_box1 = rotated_box1.buffer(0)
-
-        #rotate the rectangular bbox
-        rotated_box1 = rotate(rotated_box1, angle_1) #, origin=(b1_x1, b1_y1) #Keep origin as center
-
-        # Get co-ordinates
-        x, y = rotated_box1.exterior.xy
-
-        xy = [(x,y) for x, y in zip(x, y)]
-    
+        c, s = np.cos(angle/180*np.pi), np.sin(angle/180*np.pi)
+        R = np.asarray([[c, s], [-s, c]])
+        pts = np.asarray([[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]])
+        rot_pts = []
+        for pt in pts:
+            rot_pts.append(([x, y] + pt @ R).astype(float))
+        contours = FloatTensor([rot_pts[0], rot_pts[1], rot_pts[2], rot_pts[3]])
+        
     else:
-        for i in range(x1.size(0)):
-            # Construct a Polygon
-            rotated_box1 = Polygon([(b1_x1[i], b1_y2[i]), (b1_x2[i], b1_y2[i]), (b1_x2[i], b1_y1[i]), (b1_x1[i], b1_y1[i])])
+        contours = []
 
-            #Check Validity of Polygon and clean if invalid geometry
-            if rotated_box1.is_valid == False:
-                explain_validity(rotated_box1)
-                rotated_box1 = rotated_box1.buffer(0)
+        for i in range(x.size(0)):
+            c, s = np.cos(angle[i]/180*np.pi), np.sin(angle[i]/180*np.pi)
+            R = np.asarray([[c, s], [-s, c]])
+            pts = np.asarray([[-w[i]/2, -h[i]/2], [w[i]/2, -h[i]/2], [w[i]/2, h[i]/2], [-w[i]/2, h[i]/2]])
+            rot_pts = []
+            for pt in pts:
+                rot_pts.append(([x[i], y[i]] + pt @ R).astype(float))
+            contours += [FloatTensor([rot_pts[0], rot_pts[1], rot_pts[2], rot_pts[3]])]
 
-            #rotate the rectangular bbox
-            rotated_box1 = rotate(rotated_box1, angle_1[i]) #, origin=(b1_x1[i], b1_y1[i])
-
-            # Get co-ordinates
-            x, y = rotated_box1.exterior.xy
-
-            xy = [(x,y) for x, y in zip(x, y)]
-
-    return xy
+    return contours
 
 
 def bbox_wh_iou(wh1, wh2):
