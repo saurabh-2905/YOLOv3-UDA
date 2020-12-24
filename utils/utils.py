@@ -300,11 +300,12 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
        
     else:
         # Transform co-ordinates to x,y,w,h
-        b1_cx, b1_cy = box1[:,0] + box1[:,3] / 2, box1[:,1] + box1[:,4] / 2
-        b1_w, b1_h = box1[:,1] - box1[:,0], box1[:,4] - box1[:,3]
-
-        b2_cx, b2_cy = box2[:,0] + box2[:,3] / 2, box2[:,1] + box2[:,4] / 2
-        b2_w, b2_h = box2[:,1] - box2[:,0], box2[:,4] - box2[:,3]
+        b1_w, b1_h = box1[:,2] - box1[:,0], box1[:,3] - box1[:,1]
+        b1_cx, b1_cy = box1[:,0] + b1_w / 2, box1[:,1] + b1_h / 2
+        
+        b2_w, b2_h = box2[:,2] - box2[:,0], box2[:,3] - box2[:,1]
+        b2_cx, b2_cy = box2[:,0] + b2_w / 2, box2[:,1] + b2_h / 2
+        
     
     #get angle for rotation for all bounding boxes
     angle_1 = box1[:,-1]
