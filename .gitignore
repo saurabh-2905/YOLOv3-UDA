@@ -16,6 +16,8 @@ logs
 data/test
 data/custom/images
 data/custom/labels
+data/fes/images
+data/fes/labels
 download.png
 logs_old
 .ipynb_checkpoints/Untitled-checkpoint.ipynb

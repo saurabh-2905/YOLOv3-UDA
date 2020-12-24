@@ -146,8 +146,13 @@ class ListDataset(Dataset):
             boxes[:, 0] = i
         # Remove empty placeholder targets
         targets = [boxes for boxes in targets if boxes is not None]
-        targets = torch.cat(targets, 0)
+        #targets = torch.cat(targets, 0)
 
+        try:
+            targets = torch.cat(targets, 0)
+        except RuntimeError as e_inst:
+            targets = None # No boxes for an image
+            
         # Selects new image size every tenth batch
         if self.multiscale and self.batch_count % 10 == 0:
             self.img_size = random.choice(range(self.min_size, self.max_size + 1, 32))

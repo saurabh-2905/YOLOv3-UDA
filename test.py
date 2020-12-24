@@ -24,10 +24,20 @@ import torch.optim as optim
 def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size, batch_size, class_80, gpu_num):
     model.eval()
 
-    # Get dataloader
-    dataset = ImageAnnotation(folder_path=path, json_path=json_path, img_size=img_size, augment=False, multiscale=False, class_80=class_80)
+    # # Get dataloader
+    # dataset = ImageAnnotation(folder_path=path, json_path=json_path, img_size=img_size, augment=False, multiscale=False, class_80=class_80)
+    # dataloader = torch.utils.data.DataLoader(
+    #     dataset, batch_size=batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collate_fn
+    # )
+
+    dataset = ListDataset(path, augment=False, multiscale=False, normalized_labels=False)
     dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collate_fn
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+        collate_fn=dataset.collate_fn,
     )
 
     Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
@@ -101,7 +111,8 @@ if __name__ == "__main__":
     opt = parser.parse_args()
     print(opt)
 
-    device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
+    gpu_no = 5
+    device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
 
     data_config = parse_data_config(opt.data_config)
     valid_path = data_config["valid"]

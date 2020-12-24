@@ -46,7 +46,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_def", type=str, default="config/yolov3-custom.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
     parser.add_argument("--pretrained_weights", type=str, default="weights/darknet53.conv.74", help="if specified starts from checkpoint model")
-    parser.add_argument("--n_cpu", type=int, default=4, help="number of cpu threads to use during batch generation")
+    parser.add_argument("--n_cpu", type=int, default=6, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
     parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between saving model weights")
     parser.add_argument("--evaluation_interval", type=int, default=1, help="interval evaluations on validation set")
@@ -88,8 +88,19 @@ if __name__ == "__main__":
         else:
             model.load_darknet_weights(opt.pretrained_weights)
 
+    # # Get dataloader
+    # dataset = ImageAnnotation(folder_path=train_path, json_path=train_annpath, img_size=opt.img_size, augment=True, multiscale=opt.multiscale_training, class_80=class_80)
+    # dataloader = torch.utils.data.DataLoader(
+    #     dataset,
+    #     batch_size=opt.batch_size,
+    #     shuffle=True,
+    #     num_workers=opt.n_cpu,
+    #     pin_memory=True,
+    #     collate_fn=dataset.collate_fn,
+    # )
+
     # Get dataloader
-    dataset = ImageAnnotation(folder_path=train_path, json_path=train_annpath, img_size=opt.img_size, augment=True, multiscale=opt.multiscale_training, class_80=class_80)
+    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -187,8 +198,8 @@ if __name__ == "__main__":
 
             model.seen += imgs.size(0)
 
-            # if batch_i == 10:
-            #     break
+            if batch_i == 500:
+                break
 
         # Calculate loss for each epoch
         train_acc_epoch = train_acc_epoch / (batch_i+1)
@@ -214,7 +225,7 @@ if __name__ == "__main__":
                     path=valid_path,
                     json_path=valid_annpath,
                     iou_thres=0.5,
-                    conf_thres=0.1,
+                    conf_thres=0.01,
                     nms_thres=0.5,
                     img_size=opt.img_size,
                     batch_size=8,
@@ -230,14 +241,12 @@ if __name__ == "__main__":
                 logger.val_list_of_scalars_summary(evaluation_metrics, epoch)
                 logger.val_scalar_summary("epoch_acc", val_acc, epoch)
                 logger.val_scalar_summary("epoch_loss", val_loss, epoch)
-
                 # Print class APs and mAP
                 ap_table = [["Index", "Class name", "AP"]]
                 for i, c in enumerate(ap_class):
                     ap_table += [[c, class_names[c], "%.5f" % AP[i]]]
                 print(AsciiTable(ap_table).table)
                 print(f"---- mAP {AP.mean()}")
-
                 # #Save image detections
                 # draw_bbox(model=model,
                 #         image_folder=valid_path,
@@ -247,5 +256,3 @@ if __name__ == "__main__":
                 #         nms_thres=0.8,
                 #         n_cpu=opt.n_cpu,
                 #         out_dir='training')
-
-        
