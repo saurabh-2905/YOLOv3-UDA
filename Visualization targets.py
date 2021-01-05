@@ -84,7 +84,7 @@ if __name__ == "__main__":
     # colors = [cmap(i) for i in np.linspace(0, 1, 20)]
     # colors = colors[:,:3] * 255
 
-    colors = [(0,134,213), (220,0,213), (255,0,0), (255, 233, 0), (0,255,0), (255,0,0)]
+    colors = [(0,134,213), (220,0,213), (255,0,0), (255, 233, 0), (0,255,0), (0,0,255)]
 
     print("\nSaving images:")
     # Iterate through images and save plot of detections
