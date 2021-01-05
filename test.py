@@ -24,21 +24,21 @@ import torch.optim as optim
 def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size, batch_size, class_80, gpu_num):
     model.eval()
 
-    # Get dataloader
-    dataset = ImageAnnotation(folder_path=path, json_path=json_path, img_size=img_size, augment=False, multiscale=False, class_80=class_80)
-    dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collate_fn
-    )
-
-    # dataset = ListDataset(path, augment=False, multiscale=False, normalized_labels=False)
+    # # Get dataloader
+    # dataset = ImageAnnotation(folder_path=path, json_path=json_path, img_size=img_size, augment=False, multiscale=False, class_80=class_80)
     # dataloader = torch.utils.data.DataLoader(
-    #     dataset,
-    #     batch_size=batch_size,
-    #     shuffle=False,
-    #     num_workers=4,
-    #     pin_memory=True,
-    #     collate_fn=dataset.collate_fn,
+    #     dataset, batch_size=batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collate_fn
     # )
+
+    dataset = ListDataset(path, augment=False, multiscale=False, normalized_labels=False)
+    dataloader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+        collate_fn=dataset.collate_fn,
+    )
 
     Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
     device = torch.device(f"cuda:{gpu_num}" if torch.cuda.is_available() else "cpu")
@@ -104,8 +104,8 @@ if __name__ == "__main__":
     parser.add_argument("--weights_path", type=str, default="checkpoints/all_images/36_e3.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
     parser.add_argument("--iou_thres", type=float, default=0.5, help="iou threshold required to qualify as detected")
-    parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
-    parser.add_argument("--nms_thres", type=float, default=0.5, help="iou thresshold for non-maximum suppression")
+    parser.add_argument("--conf_thres", type=float, default=0.1, help="object confidence threshold")
+    parser.add_argument("--nms_thres", type=float, default=0.1, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
     opt = parser.parse_args()
@@ -131,7 +131,7 @@ if __name__ == "__main__":
         model.load_darknet_weights(opt.weights_path)
     else:
         # Load checkpoint weights
-        model.load_state_dict(torch.load(opt.weights_path, map_location=f'cuda:{device.index}'))
+        model.load_state_dict(torch.load(opt.weights_path, map_location=device))
 
     print("Compute mAP...")
 
@@ -152,4 +152,6 @@ if __name__ == "__main__":
     for i, c in enumerate(ap_class):
         print(f"+ Class '{c}' ({class_names[c]}) - AP: {AP[i]}")
 
-    print(f"mAP: {AP.mean()}")
+    print(f"mAP: {AP.mean()}",
+            f"val_acc: {val_acc}",
+            f"val_loss: {val_loss}")
