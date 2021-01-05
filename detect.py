@@ -65,10 +65,10 @@ def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, 
         imgs.extend(img_paths)
         img_detections.extend(detections)
 
-        if batch_i == 20:
+        if batch_i == 0:
             break
 
-    colors = [(0,134,213), (220,0,213), (255,0,0), (255, 233, 0), (0,255,0), (255,0,0)]
+    colors = [(0,134,213), (220,0,213), (255,0,0), (255, 233, 0), (0,255,0), (0,0,255)]
 
     print("\nSaving images:")
     # Iterate through images and save plot of detections
@@ -105,7 +105,7 @@ def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, 
 
                 #Draw bounding boxes
                 cv2.polylines(img, [pts], isClosed=True, color=color, thickness=5)
-                #cv2.putText(img, classes[int(cls_pred)], (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX ,  0.8, 1, cv2.LINE_AA)
+                #cv2.putText(img, classes[int(cls_pred)], (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX ,  2, 1, cv2.LINE_AA)
                 ax.imshow(img[...,::-1]) #convert BGR image to RGB image
 
                 # Create a Rectangle patch
@@ -163,7 +163,7 @@ if __name__ == "__main__":
         model.load_darknet_weights(opt.pretrained_weights)
     elif opt.pretrained_weights.endswith(".pth"):
         # Load checkpoint weights
-        model.load_state_dict(torch.load(opt.pretrained_weights))
+        model.load_state_dict(torch.load(opt.pretrained_weights, map_location=f'{device}'))
     elif opt.pretrained_weights.endswith(".ckpt"):
         checkpoint = torch.load(opt.pretrained_weights, map_location=lambda storage, loc: storage)
         model.load_state_dict(checkpoint['state_dict'])
