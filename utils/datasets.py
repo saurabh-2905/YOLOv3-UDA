@@ -78,6 +78,16 @@ class ListDataset(Dataset):
         self.min_size = self.img_size - 3 * 32
         self.max_size = self.img_size + 3 * 32
         self.batch_count = 0
+        self.pixel_norm = False
+
+        if self.img_files[0].find('custom') != -1 or self.img_files[0].find('theodore') != -1:
+            self.pixel_norm = True
+
+            with open('/localdata/saurabh/yolov3/data/theodore_ms.txt', "r") as ms:
+                ms_values = ms.readlines()
+                ms_values = [s.strip() for s in ms_values]
+                self.mean_t = [float(s) for s in ms_values[0].split()]
+                self.std_t = [float(s) for s in ms_values[1].split()]
 
     def __getitem__(self, index):
 
@@ -89,7 +99,16 @@ class ListDataset(Dataset):
         #print(img_path)
 
         # Extract image as PyTorch tensor
-        img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
+        if self.pixel_norm == True:
+            img = (Image.open(img_path).convert('RGB'))
+            trans = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean_t, self.std_t)
+                ])
+            img = trans(img)
+
+        else:
+            img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
 
         # Handle images with less than three channels
         if len(img.shape) != 3:
@@ -193,7 +212,17 @@ class ImageAnnotation(Dataset):
         assert len(img_dir) == len(json_path)
         for imdir, jspath in zip(img_dir, json_path):
             self.load_anns(imdir, jspath)
-        self.label_mapping()
+        #self.label_mapping()
+        self.pixel_norm = False
+
+        if self.json_path.find('custom') != -1 or self.json_path.find('theodore') != -1:
+            self.pixel_norm = True
+
+            with open('/localdata/saurabh/yolov3/data/theodore_ms.txt', "r") as ms:
+                ms_values = ms.readlines()
+                ms_values = [s.strip() for s in ms_values]
+                self.mean_t = [float(s) for s in ms_values[0].split()]
+                self.std_t = [float(s) for s in ms_values[1].split()]
 
 
     def load_anns(self, img_dir, json_path):
@@ -270,7 +299,17 @@ class ImageAnnotation(Dataset):
         img_path = self.imgid2path[img_id]
         #print(img_path)
 
-        img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
+        if self.pixel_norm == True:
+            img = (Image.open(img_path).convert('RGB'))
+            trans = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean_t, self.std_t)
+                ])
+            img = trans(img)
+
+        else:
+            img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
+            
         #print(img.shape)
         #Resize image to fixed size
         #img = resize(img, 416)
