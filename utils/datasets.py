@@ -10,6 +10,9 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 import torch
 import torch.nn.functional as F
 from collections import defaultdict
+from utils.utils import load_ms, write_ms
+from utils.mean_std import calculate_ms
+import glob
 
 
 from utils.augmentations import horisontal_flip
@@ -82,12 +85,29 @@ class ListDataset(Dataset):
 
         if self.img_files[0].find('custom') != -1 or self.img_files[0].find('theodore') != -1:
             self.pixel_norm = True
+            self.mean_t, self.std_t = load_ms('/localdata/saurabh/yolov3/data/theodore_ms.txt')
 
-            with open('/localdata/saurabh/yolov3/data/theodore_ms.txt', "r") as ms:   ### Read mean and standard deviation
-                ms_values = ms.readlines()
-                ms_values = [s.strip() for s in ms_values]
-                self.mean_t = [float(s) for s in ms_values[0].split()]
-                self.std_t = [float(s) for s in ms_values[1].split()]
+        elif self.img_files[0].find('fes') != -1:
+            self.pixel_norm = True
+            mean_path = os.path.join( os.path.dirname(list_path), 'fes_ms.txt' )
+            if os.path.isfile( mean_path ) == True:
+                self.mean_t, self.std_t = load_ms(mean_path)
+            else:
+                fes_imgpath = glob.glob('/localdata/saurabh/dataset/FES/JPEGImages/*.jpg')
+                self.mean_t, self.std_t = calculate_ms(fes_imgpath)
+                mean_std = [self.mean_t, self.std_t]
+                write_ms( mean_path, mean_std )
+        
+        elif self.img_files[0].find('DST') != -1:
+            self.pixel_norm = True
+            mean_path = os.path.join( os.path.dirname(list_path), 'dst_ms.txt' )
+            if os.path.isfile( mean_path ) == True:
+                self.mean_t, self.std_t = load_ms(mean_path)
+            else:
+                fes_imgpath = glob.glob('/localdata/saurabh/dataset/DST/val/*.png')
+                self.mean_t, self.std_t = calculate_ms(fes_imgpath)
+                mean_std = [self.mean_t, self.std_t]
+                write_ms( mean_path, mean_std )
 
     def __getitem__(self, index):
 
