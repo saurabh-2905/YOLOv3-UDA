@@ -56,7 +56,7 @@ if __name__ == "__main__":
     print(opt)
 
     logger = Logger("logs")
-    gpu_no = 5
+    gpu_no = 2
     device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
     torch.cuda.set_device(device.index)
     print(device)
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     # )
 
     # Get dataloader
-    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False)
+    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False, pixel_norm=True)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,

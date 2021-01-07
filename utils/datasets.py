@@ -65,7 +65,7 @@ class ImageFolder(Dataset):
 
 
 class ListDataset(Dataset):
-    def __init__(self, list_path, img_size=416, augment=True, multiscale=True, normalized_labels=True):
+    def __init__(self, list_path, img_size=416, augment=True, multiscale=True, normalized_labels=True, pixel_norm=True ):
         with open(list_path, "r") as file:
             self.img_files = file.readlines()
 
@@ -81,33 +81,35 @@ class ListDataset(Dataset):
         self.min_size = self.img_size - 3 * 32
         self.max_size = self.img_size + 3 * 32
         self.batch_count = 0
-        self.pixel_norm = False
-
-        if self.img_files[0].find('custom') != -1 or self.img_files[0].find('theodore') != -1:
-            self.pixel_norm = True
-            self.mean_t, self.std_t = load_ms('/localdata/saurabh/yolov3/data/theodore_ms.txt')
-
-        elif self.img_files[0].find('fes') != -1:
-            self.pixel_norm = True
-            mean_path = os.path.join( os.path.dirname(list_path), 'fes_ms.txt' )
-            if os.path.isfile( mean_path ) == True:
-                self.mean_t, self.std_t = load_ms(mean_path)
-            else:
-                fes_imgpath = glob.glob('/localdata/saurabh/dataset/FES/JPEGImages/*.jpg')
-                self.mean_t, self.std_t = calculate_ms(fes_imgpath)
-                mean_std = [self.mean_t, self.std_t]
-                write_ms( mean_path, mean_std )
+        self.pixel_norm = pixel_norm
         
-        elif self.img_files[0].find('DST') != -1:
-            self.pixel_norm = True
-            mean_path = os.path.join( os.path.dirname(list_path), 'dst_ms.txt' )
-            if os.path.isfile( mean_path ) == True:
-                self.mean_t, self.std_t = load_ms(mean_path)
-            else:
-                fes_imgpath = glob.glob('/localdata/saurabh/dataset/DST/val/*.png')
-                self.mean_t, self.std_t = calculate_ms(fes_imgpath)
-                mean_std = [self.mean_t, self.std_t]
-                write_ms( mean_path, mean_std )
+        if self.pixel_norm == True:
+
+            if self.img_files[0].find('custom') != -1 or self.img_files[0].find('theodore') != -1:
+                
+                self.mean_t, self.std_t = load_ms('/localdata/saurabh/yolov3/data/theodore_ms.txt')
+
+            elif self.img_files[0].find('fes') != -1:
+                
+                mean_path = os.path.join( os.path.dirname(list_path), 'fes_ms.txt' )
+                if os.path.isfile( mean_path ) == True:
+                    self.mean_t, self.std_t = load_ms(mean_path)
+                else:
+                    fes_imgpath = glob.glob('/localdata/saurabh/dataset/FES/JPEGImages/*.jpg')
+                    self.mean_t, self.std_t = calculate_ms(fes_imgpath)
+                    mean_std = [self.mean_t, self.std_t]
+                    write_ms( mean_path, mean_std )
+            
+            elif self.img_files[0].find('DST') != -1:
+                
+                mean_path = os.path.join( os.path.dirname(list_path), 'dst_ms.txt' )
+                if os.path.isfile( mean_path ) == True:
+                    self.mean_t, self.std_t = load_ms(mean_path)
+                else:
+                    fes_imgpath = glob.glob('/localdata/saurabh/dataset/DST/val/*.png')
+                    self.mean_t, self.std_t = calculate_ms(fes_imgpath)
+                    mean_std = [self.mean_t, self.std_t]
+                    write_ms( mean_path, mean_std )
 
     def __getitem__(self, index):
 
