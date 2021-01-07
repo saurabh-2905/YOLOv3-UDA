@@ -65,7 +65,7 @@ class ImageFolder(Dataset):
 
 
 class ListDataset(Dataset):
-    def __init__(self, list_path, img_size=416, augment=True, multiscale=True, normalized_labels=True, pixel_norm=True ):
+    def __init__(self, list_path, img_size=416, augment=True, multiscale=True, normalized_labels=True, pixel_norm=True, train_data=None ):
         with open(list_path, "r") as file:
             self.img_files = file.readlines()
 
@@ -85,13 +85,11 @@ class ListDataset(Dataset):
         
         if self.pixel_norm == True:
 
-            if self.img_files[0].find('custom') != -1 or self.img_files[0].find('theodore') != -1:
-                
+            if train_data == 'theodore': 
                 self.mean_t, self.std_t = load_ms('/localdata/saurabh/yolov3/data/theodore_ms.txt')
 
-            elif self.img_files[0].find('fes') != -1:
-                
-                mean_path = os.path.join( os.path.dirname(list_path), 'fes_ms.txt' )
+            elif train_data == 'fes': 
+                mean_path = 'data/fes/fes_ms.txt' 
                 if os.path.isfile( mean_path ) == True:
                     self.mean_t, self.std_t = load_ms(mean_path)
                 else:
@@ -100,9 +98,8 @@ class ListDataset(Dataset):
                     mean_std = [self.mean_t, self.std_t]
                     write_ms( mean_path, mean_std )
             
-            elif self.img_files[0].find('DST') != -1:
-                
-                mean_path = os.path.join( os.path.dirname(list_path), 'dst_ms.txt' )
+            elif train_data == 'dst':
+                mean_path = 'data/DST/dst_ms.txt' 
                 if os.path.isfile( mean_path ) == True:
                     self.mean_t, self.std_t = load_ms(mean_path)
                 else:

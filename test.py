@@ -21,7 +21,7 @@ from torch.autograd import Variable
 import torch.optim as optim
 
 
-def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size, batch_size, class_80, gpu_num):
+def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size, batch_size, class_80, gpu_num, train_data= None):
     model.eval()
 
     # # Get dataloader
@@ -30,7 +30,7 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
     #     dataset, batch_size=batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collate_fn
     # )
 
-    dataset = ListDataset(path, augment=False, multiscale=False, normalized_labels=False, pixel_norm=True)
+    dataset = ListDataset(path, augment=False, multiscale=False, normalized_labels=False, pixel_norm=True, train_data=train_data)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,

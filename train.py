@@ -72,6 +72,13 @@ if __name__ == "__main__":
     valid_annpath = data_config["json_val"]
     class_names = load_classes(data_config["names"])
 
+    if train_path.find('theodore') != -1:
+        train_dataset = 'theodore'
+    elif train_path.find('fes') != -1:
+        train_dataset = 'fes'
+    elif train_path.find('dst') != -1:
+        train_dataset = 'dst'
+
     if len(class_names) == 80:
         class_80 = True
     else:
@@ -100,7 +107,7 @@ if __name__ == "__main__":
     # )
 
     # Get dataloader
-    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False, pixel_norm=True)
+    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False, pixel_norm=True, train_data=train_dataset)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -230,7 +237,8 @@ if __name__ == "__main__":
                     img_size=opt.img_size,
                     batch_size=8,
                     class_80=class_80,
-                    gpu_num=gpu_no
+                    gpu_num=gpu_no,
+                    train_data= train_dataset,
                 )
                 evaluation_metrics = [
                     ("val_precision", precision.mean()),
