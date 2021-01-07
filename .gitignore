@@ -18,6 +18,8 @@ data/custom/images
 data/custom/labels
 data/fes/images
 data/fes/labels
+data/DST/images
+data/DST/labels
 download.png
 logs_old
 .ipynb_checkpoints/Untitled-checkpoint.ipynb
