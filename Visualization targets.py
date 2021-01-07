@@ -28,7 +28,7 @@ import cv2
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_folder", type=str, default="data//val_paths.txt", help="path to dataset")    
+    parser.add_argument("--image_folder", type=str, default="data/DST/dst_paths.txt", help="path to dataset")    
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     os.makedirs("output", exist_ok=True)
 
-    dataset = ListDataset(opt.image_folder, img_size=opt.img_size, normalized_labels=False, augment=False, multiscale=False)
+    dataset = ListDataset(opt.image_folder, img_size=opt.img_size, normalized_labels=False, augment=False, multiscale=False, pixel_norm=False)
     dataloader = DataLoader(
         dataset,
         batch_size=opt.batch_size,

@@ -65,7 +65,7 @@ class ImageFolder(Dataset):
 
 
 class ListDataset(Dataset):
-    def __init__(self, list_path, img_size=416, augment=True, multiscale=True, normalized_labels=True, pixel_norm=True, train_data=None ):
+    def __init__(self, list_path, img_size=416, augment=True, multiscale=True, normalized_labels=True, pixel_norm=False, train_data=None ):
         with open(list_path, "r") as file:
             self.img_files = file.readlines()
 
