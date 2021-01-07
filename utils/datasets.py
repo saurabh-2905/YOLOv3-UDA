@@ -83,7 +83,7 @@ class ListDataset(Dataset):
         if self.img_files[0].find('custom') != -1 or self.img_files[0].find('theodore') != -1:
             self.pixel_norm = True
 
-            with open('/localdata/saurabh/yolov3/data/theodore_ms.txt', "r") as ms:
+            with open('/localdata/saurabh/yolov3/data/theodore_ms.txt', "r") as ms:   ### Read mean and standard deviation
                 ms_values = ms.readlines()
                 ms_values = [s.strip() for s in ms_values]
                 self.mean_t = [float(s) for s in ms_values[0].split()]

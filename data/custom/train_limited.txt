@@ -298,4 +298,3 @@
 /localdata/saurabh/yolov3/data/custom/images/train/0037856_img.png
 /localdata/saurabh/yolov3/data/custom/images/train/0032516_img.png
 /localdata/saurabh/yolov3/data/custom/images/train/0034423_img.png
-/localdata/saurabh/yolov3/data/custom/images/train/0000000_img.png
