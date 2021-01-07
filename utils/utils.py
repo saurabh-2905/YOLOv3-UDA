@@ -48,7 +48,7 @@ def write_ms(path, values):
     """
     text_file = open(path, 'w')
     for sing in values:
-        text_file.writelines( ["%f" % item for item in sing] )
+        text_file.writelines( ["%f " % item for item in sing] )
         text_file.write("\n")
     text_file.close()
 
