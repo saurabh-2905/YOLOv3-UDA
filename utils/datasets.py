@@ -235,15 +235,31 @@ class ImageAnnotation(Dataset):
         #self.label_mapping()
         self.pixel_norm = False
 
-        if self.json_path.find('custom') != -1 or self.json_path.find('theodore') != -1:
+        if self.json_path[0].find('custom') != -1 or self.json_path[0].find('theodore') != -1:
             self.pixel_norm = True
+            self.mean_t, self.std_t = load_ms('/localdata/saurabh/yolov3/data/theodore_ms.txt')
 
-            with open('/localdata/saurabh/yolov3/data/theodore_ms.txt', "r") as ms:
-                ms_values = ms.readlines()
-                ms_values = [s.strip() for s in ms_values]
-                self.mean_t = [float(s) for s in ms_values[0].split()]
-                self.std_t = [float(s) for s in ms_values[1].split()]
-
+        elif self.json_path[0].find('fes') != -1:
+            self.pixel_norm = True
+            mean_path = os.path.join( '/localdata/saurabh/yolov3/data/fes/', 'fes_ms.txt' )
+            if os.path.isfile( mean_path ) == True:
+                self.mean_t, self.std_t = load_ms(mean_path)
+            else:
+                fes_imgpath = glob.glob('/localdata/saurabh/dataset/FES/JPEGImages/*.jpg')
+                self.mean_t, self.std_t = calculate_ms(fes_imgpath)
+                mean_std = [self.mean_t, self.std_t]
+                write_ms( mean_path, mean_std )
+        
+        elif self.json_path[0].find('DST') != -1:
+            self.pixel_norm = True
+            mean_path = os.path.join( '/localdata/saurabh/yolov3/data/dst/', 'dst_ms.txt' )
+            if os.path.isfile( mean_path ) == True:
+                self.mean_t, self.std_t = load_ms(mean_path)
+            else:
+                fes_imgpath = glob.glob('/localdata/saurabh/dataset/DST/val/*.png')
+                self.mean_t, self.std_t = calculate_ms(fes_imgpath)
+                mean_std = [self.mean_t, self.std_t]
+                write_ms( mean_path, mean_std )
 
     def load_anns(self, img_dir, json_path):
         self.coco = False
