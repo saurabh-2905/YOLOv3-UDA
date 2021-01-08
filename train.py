@@ -72,12 +72,15 @@ if __name__ == "__main__":
     valid_annpath = data_config["json_val"]
     class_names = load_classes(data_config["names"])
 
-    if train_path.find('theodore') != -1:   ### flag to use same mean and std values for evaluation as well
+    if train_path.find('custom') != -1:   ### flag to use same mean and std values for evaluation as well
         train_dataset = 'theodore'
+        print('Training on Theodore Dataset')
     elif train_path.find('fes') != -1:
         train_dataset = 'fes'
+        print('Training on FES dataset')
     elif train_path.find('dst') != -1:
         train_dataset = 'dst'
+        print('Training on DST dataset')
 
     if len(class_names) == 80:    ### To indicate it is not coco dataset
         class_80 = True
