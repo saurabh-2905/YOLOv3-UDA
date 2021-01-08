@@ -99,7 +99,7 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
-    parser.add_argument("--model_def", type=str, default="config/yolov3-custom.cfg", help="path to model definition file")
+    parser.add_argument("--model_def", type=str, default="config/yolov3-custom-c6.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
     parser.add_argument("--weights_path", type=str, default="checkpoints/all_images/36_e3.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
