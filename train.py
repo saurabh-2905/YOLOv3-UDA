@@ -78,7 +78,7 @@ if __name__ == "__main__":
     elif train_path.find('fes') != -1:
         train_dataset = 'fes'
         print('Training on FES dataset')
-    elif train_path.find('dst') != -1:
+    elif train_path.find('DST') != -1:
         train_dataset = 'dst'
         print('Training on DST dataset')
 
