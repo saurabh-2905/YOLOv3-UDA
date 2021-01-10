@@ -6,7 +6,7 @@ from utils.datasets import *
 from utils.parse_config import *
 
 import os
-#os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6'
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import sys
 import time
 import datetime
@@ -100,8 +100,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
     parser.add_argument("--model_def", type=str, default="config/yolov3-custom-c6.cfg", help="path to model definition file")
-    parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
-    parser.add_argument("--weights_path", type=str, default="checkpoints/all_images/36_e3.pth", help="path to weights file")
+    parser.add_argument("--data_config", type=str, default="config/fes.data", help="path to data config file")
+    parser.add_argument("--weights_path", type=str, default="checkpoints/dst-fes/fesn2_200.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
     parser.add_argument("--iou_thres", type=float, default=0.5, help="iou threshold required to qualify as detected")
     parser.add_argument("--conf_thres", type=float, default=0.1, help="object confidence threshold")
@@ -118,6 +118,16 @@ if __name__ == "__main__":
     valid_path = data_config["valid"]
     valid_annpath = data_config["json_val"]
     class_names = load_classes(data_config["names"])
+
+    if valid_path.find('custom') != -1:   ### flag to use same mean and std values for evaluation as well
+        train_dataset = 'theodore'
+        print('Testing on Theodore Dataset')
+    elif valid_path.find('fes') != -1:
+        train_dataset = 'fes'
+        print('Testing on FES dataset')
+    elif valid_path.find('DST') != -1:
+        train_dataset = 'dst'
+        print('Testing on DST dataset')
 
     if len(class_names) == 80:
         class_80 = True
@@ -145,7 +155,8 @@ if __name__ == "__main__":
         img_size=opt.img_size,
         batch_size=opt.batch_size,
         class_80=class_80,
-        gpu_num=device.index
+        gpu_num=device.index,
+        train_data=train_dataset
     )
 
     print("Average Precisions:")
