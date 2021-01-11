@@ -86,6 +86,15 @@ def xywh2xyxy(x):
     y[..., 3] = x[..., 1] + x[..., 3] / 2
     return y
 
+def xyxy2xywh(x):
+    y = x.new(x.shape)
+    w, h = x[..., 2] - x[..., 0], x[..., 3] - x[..., 1]
+    y[...,0] = x[...,0] + (w / 2)
+    y[...,1] = x[...,1] + (h / 2)
+    y[...,2] = w
+    y[...,3] = h
+    return y
+
 
 def ap_per_class(tp, conf, pred_cls, target_cls):
     """ Compute the average precision, given the recall and precision curves.
@@ -445,10 +454,10 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
         if keep_boxes:
             output[image_i] = torch.stack(keep_boxes)
     
-    for out in output:
-        if out == None:
-            output = torch.zeros_like(prediction)
-            break
+    # for o_i, out in enumerate(output):
+    #     if out == None:
+    #         output[o_i] = torch.zeros(1,8)
+            
 
     return output
 
