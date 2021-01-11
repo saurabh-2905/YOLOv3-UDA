@@ -45,14 +45,36 @@ def random_resize(images, min_size=288, max_size=448):
 
 
 class ImageFolder(Dataset):
-    def __init__(self, folder_path, img_size=416):
+    def __init__(self, folder_path, train_data, img_size=416 ):
         self.files = sorted(glob.glob("%s/*.*" % folder_path))
         self.img_size = img_size
+        self.pixel_norm = False
+
+        if train_data == 'theodore': 
+            self.pixel_norm = True
+            self.mean_t, self.std_t = load_ms('/localdata/saurabh/yolov3/data/theodore_ms.txt')
+        elif train_data == 'fes':
+            self.pixel_norm = True
+            self.mean_t, self.std_t = load_ms('data/fes/fes_ms.txt')
+        elif train_data == 'dst':
+            self.pixel_norm = True
+            self.mean_t, self.std_t = load_ms('data/DST/dst_ms.txt')
+
 
     def __getitem__(self, index):
         img_path = self.files[index % len(self.files)]
         # Extract image as PyTorch tensor
-        img = transforms.ToTensor()(Image.open(img_path))
+        if self.pixel_norm == True:
+            img = (Image.open(img_path).convert('RGB'))
+            trans = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean_t, self.std_t)
+                ])
+            img = trans(img)
+
+        else:
+            img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
+        
         # Pad to square resolution
         img, _ = pad_to_square(img, 0)
         # Resize

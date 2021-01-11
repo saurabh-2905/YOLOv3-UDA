@@ -26,11 +26,11 @@ from matplotlib.ticker import NullLocator
 
 import cv2
 
-def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, out_dir, batch_size=1, n_cpu=0,):
+def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, out_dir, train_data, batch_size=1, n_cpu=0,):
     model.eval()  # Set in evaluation mode
 
     dataloader = DataLoader(
-        ImageFolder(image_folder, img_size=img_size),
+        ImageFolder(image_folder, img_size=img_size, train_data=train_data),
         batch_size=batch_size,
         shuffle=False,
         num_workers=n_cpu,
@@ -65,7 +65,7 @@ def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, 
         imgs.extend(img_paths)
         img_detections.extend(detections)
 
-        if batch_i == 0:
+        if batch_i == 4:
             break
 
     colors = [(0,134,213), (220,0,213), (255,0,0), (255, 233, 0), (0,255,0), (0,0,255)]
@@ -136,12 +136,13 @@ def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_folder", type=str, default="/localdata/saurabh/yolov3/data/test/images", help="path to dataset")
+    parser.add_argument("--image_folder", type=str, default="/localdata/saurabh/yolov3/data/custom/images/val", help="path to dataset")
+    parser.add_argument("--dataset", type=str, default="fes", help='to get the respective normalization values', choices=['theodore', 'fes', 'dst'])
     parser.add_argument("--model_def", type=str, default="config/yolov3-custom-c6.cfg", help="path to model definition file")
-    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/rotated_new/97_e2.pth", help="path to weights file")
+    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/thenorm2_1000.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
-    parser.add_argument("--conf_thres", type=float, default=0.7, help="object confidence threshold")
-    parser.add_argument("--nms_thres", type=float, default=0.4, help="iou thresshold for non-maximum suppression")
+    parser.add_argument("--conf_thres", type=float, default=0.4, help="object confidence threshold")
+    parser.add_argument("--nms_thres", type=float, default=0.2, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
@@ -169,7 +170,7 @@ if __name__ == "__main__":
         model.load_state_dict(checkpoint['state_dict'])
         
     #model = model.model 
-
+    train_data = opt.dataset
 
     draw_bbox(model=model,
             image_folder=opt.image_folder,
@@ -179,6 +180,7 @@ if __name__ == "__main__":
             nms_thres=opt.nms_thres,
             out_dir='detection',
             batch_size=opt.batch_size,
-            n_cpu=opt.n_cpu)
+            n_cpu=opt.n_cpu,
+            train_data=train_data)
 
     
