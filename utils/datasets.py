@@ -8,6 +8,9 @@ from PIL import Image
 import torch
 import torch.nn.functional as F
 from collections import defaultdict
+from utils.utils import load_ms, write_ms
+from utils.mean_std import calculate_ms
+import glob
 
 
 from utils.augmentations import horisontal_flip
@@ -40,14 +43,36 @@ def random_resize(images, min_size=288, max_size=448):
 
 
 class ImageFolder(Dataset):
-    def __init__(self, folder_path, img_size=416):
+    def __init__(self, folder_path, train_data, img_size=416 ):
         self.files = sorted(glob.glob("%s/*.*" % folder_path))
         self.img_size = img_size
+        self.pixel_norm = False
+
+        if train_data == 'theodore': 
+            self.pixel_norm = True
+            self.mean_t, self.std_t = load_ms('/localdata/saurabh/yolov3/data/theodore_ms.txt')
+        elif train_data == 'fes':
+            self.pixel_norm = True
+            self.mean_t, self.std_t = load_ms('data/fes/fes_ms.txt')
+        elif train_data == 'dst':
+            self.pixel_norm = True
+            self.mean_t, self.std_t = load_ms('data/DST/dst_ms.txt')
+
 
     def __getitem__(self, index):
         img_path = self.files[index % len(self.files)]
         # Extract image as PyTorch tensor
-        img = transforms.ToTensor()(Image.open(img_path))
+        if self.pixel_norm == True:
+            img = (Image.open(img_path).convert('RGB'))
+            trans = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean_t, self.std_t)
+                ])
+            img = trans(img)
+
+        else:
+            img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
+        
         # Pad to square resolution
         img, _ = pad_to_square(img, 0)
         # Resize
@@ -55,12 +80,13 @@ class ImageFolder(Dataset):
 
         return img_path, img
 
+
     def __len__(self):
         return len(self.files)
 
 
 class ListDataset(Dataset):
-    def __init__(self, list_path, img_size=416, augment=True, multiscale=True, normalized_labels=True):
+    def __init__(self, list_path, img_size=416, augment=True, multiscale=True, normalized_labels=True, pixel_norm=False, train_data=None):
         with open(list_path, "r") as file:
             self.img_files = file.readlines()
 
@@ -76,6 +102,33 @@ class ListDataset(Dataset):
         self.min_size = self.img_size - 3 * 32
         self.max_size = self.img_size + 3 * 32
         self.batch_count = 0
+        self.pixel_norm = pixel_norm
+
+        if self.pixel_norm == True:
+
+            if train_data == 'theodore': 
+                self.mean_t, self.std_t = load_ms('/localdata/saurabh/yolov3/data/theodore_ms.txt')
+
+            elif train_data == 'fes': 
+                mean_path = 'data/fes/fes_ms.txt' 
+                if os.path.isfile( mean_path ) == True:
+                    self.mean_t, self.std_t = load_ms(mean_path)
+                else:
+                    fes_imgpath = glob.glob('/localdata/saurabh/dataset/FES/JPEGImages/*.jpg')
+                    self.mean_t, self.std_t = calculate_ms(fes_imgpath)
+                    mean_std = [self.mean_t, self.std_t]
+                    write_ms( mean_path, mean_std )
+            
+            elif train_data == 'dst':
+                mean_path = 'data/DST/dst_ms.txt' 
+                if os.path.isfile( mean_path ) == True:
+                    self.mean_t, self.std_t = load_ms(mean_path)
+                else:
+                    fes_imgpath = glob.glob('/localdata/saurabh/dataset/DST/val/*.png')
+                    self.mean_t, self.std_t = calculate_ms(fes_imgpath)
+                    mean_std = [self.mean_t, self.std_t]
+                    write_ms( mean_path, mean_std )
+
 
     def __getitem__(self, index):
 
@@ -87,7 +140,17 @@ class ListDataset(Dataset):
         print(img_path)
 
         # Extract image as PyTorch tensor
-        img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
+        if self.pixel_norm == True:
+            img = (Image.open(img_path).convert('RGB'))
+            trans = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean_t, self.std_t)
+                ])
+            img = trans(img)
+
+        else:
+            img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
+
 
         # Handle images with less than three channels
         if len(img.shape) != 3:
@@ -159,7 +222,7 @@ class ListDataset(Dataset):
 
 
 class ImageAnnotation(Dataset):
-    def __init__(self, folder_path, json_path, multiscale=True, img_size=416, augment=True, normalized_labels=False):
+    def __init__(self, folder_path, json_path, multiscale=True, img_size=416, augment=True, normalized_labels=False, pixel_norm=False, train_data=None):
         self.files = sorted(glob.glob("%s/*.*" % folder_path))
         self.img_size = img_size
         self.json_path = json_path
@@ -181,6 +244,31 @@ class ImageAnnotation(Dataset):
         assert len(img_dir) == len(json_path)
         for imdir, jspath in zip(img_dir, json_path):
             self.load_anns(imdir, jspath)
+        self.pixel_norm = pixel_norm
+
+        if self.pixel_norm == True:
+            if train_data == 'theodore':
+                self.mean_t, self.std_t = load_ms('/localdata/saurabh/yolov3/data/theodore_ms.txt')
+
+            elif train_data == 'fes':
+                mean_path = os.path.join( '/localdata/saurabh/yolov3/data/fes/', 'fes_ms.txt' )
+                if os.path.isfile( mean_path ) == True:
+                    self.mean_t, self.std_t = load_ms(mean_path)
+                else:
+                    fes_imgpath = glob.glob('/localdata/saurabh/dataset/FES/JPEGImages/*.jpg')
+                    self.mean_t, self.std_t = calculate_ms(fes_imgpath)
+                    mean_std = [self.mean_t, self.std_t]
+                    write_ms( mean_path, mean_std )
+            
+            elif train_data == 'dst':
+                mean_path = os.path.join( '/localdata/saurabh/yolov3/data/dst/', 'dst_ms.txt' )
+                if os.path.isfile( mean_path ) == True:
+                    self.mean_t, self.std_t = load_ms(mean_path)
+                else:
+                    fes_imgpath = glob.glob('/localdata/saurabh/dataset/DST/val/*.png')
+                    self.mean_t, self.std_t = calculate_ms(fes_imgpath)
+                    mean_std = [self.mean_t, self.std_t]
+                    write_ms( mean_path, mean_std )
 
 
     def load_anns(self, img_dir, json_path):
@@ -245,7 +333,16 @@ class ImageAnnotation(Dataset):
         img_id = self.img_ids[index]
         img_path = self.imgid2path[img_id]
 
-        img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
+        if self.pixel_norm == True:
+            img = (Image.open(img_path).convert('RGB'))
+            trans = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean_t, self.std_t)
+                ])
+            img = trans(img)
+
+        else:
+            img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
 
         if len(img.shape) != 3:
             img = img.unsqueeze(0)

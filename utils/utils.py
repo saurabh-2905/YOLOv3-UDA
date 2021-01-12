@@ -23,6 +23,31 @@ def load_classes(path):
     names = fp.read().split("\n")[:-1]
     return names
 
+def load_ms(path):
+    """
+    Load mean and std devation values from text file
+    """
+    with open(path, "r") as ms:   ### Read mean and standard deviation
+        ms_values = ms.readlines()
+        ms_values = [s.strip() for s in ms_values]
+        mean_val = [float(s) for s in ms_values[0].split()]
+        std_val = [float(s) for s in ms_values[1].split()]
+    
+    return mean_val, std_val
+
+def write_ms(path, values):
+    """
+    Write mean and std calues to txt file
+    path: To where the file should be stored
+    values: list of mean and std [[float],[float]]
+    """
+    text_file = open(path, 'w')
+    for sing in values:
+        text_file.writelines( ["%f " % item for item in sing] )
+        text_file.write("\n")
+    text_file.close()
+
+
 
 def weights_init_normal(m):
     classname = m.__class__.__name__

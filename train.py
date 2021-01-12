@@ -55,8 +55,11 @@ if __name__ == "__main__":
     print(opt)
 
     logger = Logger("logs")
+    gpu_no = 2
+    device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
+    torch.cuda.set_device(device.index)
+    print(device)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     os.makedirs("output", exist_ok=True)
     os.makedirs("checkpoints", exist_ok=True)
@@ -65,7 +68,26 @@ if __name__ == "__main__":
     data_config = parse_data_config(opt.data_config)
     train_path = data_config["train"]
     valid_path = data_config["valid"]
+    train_annpath = data_config["json_train"]
+    valid_annpath = data_config["json_val"]
     class_names = load_classes(data_config["names"])
+
+    if train_path.find('custom') != -1:   ### flag to use same mean and std values for evaluation as well
+        train_dataset = 'theodore'
+        print('Training on Theodore Dataset')
+    elif train_path.find('fes') != -1:
+        train_dataset = 'fes'
+        print('Training on FES dataset')
+    elif train_path.find('DST') != -1:
+        train_dataset = 'dst'
+        print('Training on DST dataset')
+
+    if len(class_names) == 80:    ### To indicate it is not coco dataset
+        class_80 = True
+    else:
+        class_80 = False
+
+
 
     # Initiate model
     model = Darknet(opt.model_def).to(device)
@@ -74,12 +96,12 @@ if __name__ == "__main__":
     # If specified we start from checkpoint
     if opt.pretrained_weights:
         if opt.pretrained_weights.endswith(".pth"):
-            model.load_state_dict(torch.load(opt.pretrained_weights))
+            model.load_state_dict(torch.load(opt.pretrained_weights, map_location=f'cuda:{device.index}'))
         else:
             model.load_darknet_weights(opt.pretrained_weights)
 
     # Get dataloader
-    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training)
+    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False, pixel_norm=True, train_data=train_dataset)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -111,6 +133,8 @@ if __name__ == "__main__":
     for epoch in range(opt.epochs):
         model.train()
         start_time = time.time()
+        train_acc_epoch = 0
+        train_loss_epoch = 0
         for batch_i, (_, imgs, targets) in enumerate(dataloader):
             batches_done = len(dataloader) * epoch + batch_i
 
@@ -134,7 +158,6 @@ if __name__ == "__main__":
             metric_table = [["Metrics", *[f"YOLO Layer {i}" for i in range(len(model.yolo_layers))]]]
 
             # Log metrics at each YOLO layer
-            batch_acc = 0
             for i, metric in enumerate(metrics):
                 formats = {m: "%.6f" for m in metrics}
                 formats["grid_size"] = "%2d"
@@ -144,6 +167,7 @@ if __name__ == "__main__":
 
             # Tensorboard logging
             tensorboard_log = []
+            batch_acc = 0
             for j, yolo in enumerate(model.yolo_layers):
                 for name, metric in yolo.metrics.items():
                     if name != "grid_size":
@@ -155,7 +179,11 @@ if __name__ == "__main__":
             tensorboard_log += [("loss", loss.item())]
             tensorboard_log += [("accu", batch_acc)]
 
-                logger.list_of_scalars_summary(tensorboard_log, batches_done)
+            logger.list_of_scalars_summary(tensorboard_log, batches_done)
+
+            # Accumulate loss for every batch of epoch
+            train_acc_epoch += batch_acc
+            train_loss_epoch += loss.item()
 
             log_str += AsciiTable(metric_table).table
             log_str += f"\nTotal loss {loss.item()}"
@@ -172,7 +200,7 @@ if __name__ == "__main__":
         if epoch % opt.evaluation_interval == 0:
             print("\n---- Evaluating Model ----")
             # Evaluate the model on the validation set
-            precision, recall, AP, f1, ap_class = evaluate(
+            precision, recall, AP, f1, ap_class, val_acc, val_loss = evaluate(
                 model,
                 path=valid_path,
                 iou_thres=0.5,
@@ -180,6 +208,10 @@ if __name__ == "__main__":
                 nms_thres=0.5,
                 img_size=opt.img_size,
                 batch_size=8,
+                class_80=class_80,
+                gpu_num=gpu_no,
+                train_data= train_dataset,
+
             )
             evaluation_metrics = [
                 ("val_precision", precision.mean()),
@@ -187,7 +219,9 @@ if __name__ == "__main__":
                 ("val_mAP", AP.mean()),
                 ("val_f1", f1.mean()),
             ]
-            logger.list_of_scalars_summary(evaluation_metrics, epoch)
+            logger.val_list_of_scalars_summary(evaluation_metrics, epoch)
+            logger.val_scalar_summary("epoch_acc", val_acc, epoch)
+            logger.val_scalar_summary("epoch_loss", val_loss, epoch)
 
             # Print class APs and mAP
             ap_table = [["Index", "Class name", "AP"]]
