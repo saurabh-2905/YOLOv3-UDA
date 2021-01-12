@@ -1,6 +1,0 @@
-classes= 6
-train=data/custom/train_limited.txt
-valid=data/custom/val_limited.txt
-json_train = None 
-json_val = None
-names=data/class.names

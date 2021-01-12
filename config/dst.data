@@ -1,6 +1,0 @@
-classes= 6
-train=data/DST/person_paths.txt
-valid=data/fes/person_paths.txt
-json_train = None 
-json_val = None
-names=data/class.names
