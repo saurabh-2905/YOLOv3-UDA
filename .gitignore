@@ -24,3 +24,6 @@ download.png
 logs_old
 .ipynb_checkpoints/Untitled-checkpoint.ipynb
 config/real.data
+data
+config
+output
