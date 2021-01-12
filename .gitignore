@@ -12,7 +12,7 @@ __pycache__
 checkpoints
 .vscode
 get-pip.py
-logs
+logs/*
 data/test
 data/custom/images
 data/custom/labels
@@ -24,7 +24,8 @@ download.png
 logs_old
 .ipynb_checkpoints/Untitled-checkpoint.ipynb
 config/real.data
-data
+data/*
 config
-output
+output/*
 config/dst.data
+config/*
