@@ -29,3 +29,4 @@ config
 output/*
 config/dst.data
 config/*
+config/custom.data
