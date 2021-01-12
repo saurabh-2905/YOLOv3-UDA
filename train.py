@@ -10,7 +10,7 @@ from test import evaluate
 from terminaltables import AsciiTable
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6'
 import sys
 import time
 import datetime
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     print(opt)
 
     logger = Logger("logs")
-    gpu_no = 2
+    gpu_no = 5
     device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
     torch.cuda.set_device(device.index)
     print(device)

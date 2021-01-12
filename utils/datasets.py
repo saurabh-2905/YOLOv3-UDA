@@ -105,7 +105,7 @@ class ListDataset(Dataset):
         self.pixel_norm = pixel_norm
 
         if self.pixel_norm == True:
-
+            print('Using Normalized Pixel values')
             if train_data == 'theodore': 
                 self.mean_t, self.std_t = load_ms('/localdata/saurabh/yolov3/data/theodore_ms.txt')
 
@@ -137,7 +137,7 @@ class ListDataset(Dataset):
         # ---------
 
         img_path = self.img_files[index % len(self.img_files)].rstrip()
-        print(img_path)
+        #print(img_path)
 
         # Extract image as PyTorch tensor
         if self.pixel_norm == True:
@@ -171,7 +171,11 @@ class ListDataset(Dataset):
 
         targets = None
         if os.path.exists(label_path):
-            boxes = torch.from_numpy(np.loadtxt(label_path).reshape(-1, 5))
+            boxes = np.loadtxt(label_path)
+            if boxes.size == 0:
+                boxes = torch.from_numpy(boxes.reshape(-1, 5))
+            else:
+                boxes = torch.from_numpy(boxes[:,:5].reshape(-1, 5))
             # Extract coordinates for unpadded + unscaled image
             x1 = w_factor * (boxes[:, 1] - boxes[:, 3] / 2)
             y1 = h_factor * (boxes[:, 2] - boxes[:, 4] / 2)
