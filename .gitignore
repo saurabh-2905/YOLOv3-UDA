@@ -23,3 +23,4 @@ Untitled.ipynb
 .ipynb_checkpoints/Untitled-checkpoint.ipynb
 config
 config/real.data
+*.ipynb
