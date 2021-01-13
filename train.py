@@ -40,7 +40,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=1000, help="number of epochs")
     parser.add_argument("--lr", type=float, default=1e-2, help="learning rate")
-    parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
+    parser.add_argument("--batch_size", type=int, default=10, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
     parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
@@ -197,38 +197,54 @@ if __name__ == "__main__":
 
             model.seen += imgs.size(0)
 
-        if epoch % opt.evaluation_interval == 0:
-            print("\n---- Evaluating Model ----")
-            # Evaluate the model on the validation set
-            precision, recall, AP, f1, ap_class, val_acc, val_loss = evaluate(
-                model,
-                path=valid_path,
-                iou_thres=0.5,
-                conf_thres=0.5,
-                nms_thres=0.5,
-                img_size=opt.img_size,
-                batch_size=8,
-                class_80=class_80,
-                gpu_num=gpu_no,
-                train_data= train_dataset,
+            # Calculate loss for each epoch
+        train_acc_epoch = train_acc_epoch / (batch_i+1)
+        train_loss_epoch = train_loss_epoch / (batch_i+1)
 
-            )
-            evaluation_metrics = [
-                ("val_precision", precision.mean()),
-                ("val_recall", recall.mean()),
-                ("val_mAP", AP.mean()),
-                ("val_f1", f1.mean()),
-            ]
-            logger.val_list_of_scalars_summary(evaluation_metrics, epoch)
-            logger.val_scalar_summary("epoch_acc", val_acc, epoch)
-            logger.val_scalar_summary("epoch_loss", val_loss, epoch)
+        # Logging values to Tensorboard
+        logger.scalar_summary("epoch_acc", train_acc_epoch, epoch)
+        logger.scalar_summary("epoch_loss", train_loss_epoch, epoch)
 
-            # Print class APs and mAP
-            ap_table = [["Index", "Class name", "AP"]]
-            for i, c in enumerate(ap_class):
-                ap_table += [[c, class_names[c], "%.5f" % AP[i]]]
-            print(AsciiTable(ap_table).table)
-            print(f"---- mAP {AP.mean()}")
+        # Print trainin loss and accuracy for each epoch
+        print(f'Training Accuracy for Epoch {epoch}: {train_acc_epoch}')
+        print(f'Training Loss for Epoch {epoch}: {train_loss_epoch}')
+
 
         if epoch % opt.checkpoint_interval == 0:
             torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)
+        
+        if epoch % opt.evaluation_interval == 0:
+            if epoch != 0:
+                print("\n---- Evaluating Model ----")
+                # Evaluate the model on the validation set
+                precision, recall, AP, f1, ap_class, val_acc, val_loss = evaluate(
+                    model,
+                    path=valid_path,
+                    iou_thres=0.5,
+                    conf_thres=0.5,
+                    nms_thres=0.5,
+                    img_size=opt.img_size,
+                    batch_size=8,
+                    class_80=class_80,
+                    gpu_num=gpu_no,
+                    train_data= train_dataset,
+
+                )
+                evaluation_metrics = [
+                    ("val_precision", precision.mean()),
+                    ("val_recall", recall.mean()),
+                    ("val_mAP", AP.mean()),
+                    ("val_f1", f1.mean()),
+                ]
+                logger.val_list_of_scalars_summary(evaluation_metrics, epoch)
+                logger.val_scalar_summary("epoch_acc", val_acc, epoch)
+                logger.val_scalar_summary("epoch_loss", val_loss, epoch)
+
+                # Print class APs and mAP
+                ap_table = [["Index", "Class name", "AP"]]
+                for i, c in enumerate(ap_class):
+                    ap_table += [[c, class_names[c], "%.5f" % AP[i]]]
+                print(AsciiTable(ap_table).table)
+                print(f"---- mAP {AP.mean()}")
+
+            
