@@ -91,7 +91,7 @@ class ListDataset(Dataset):
             self.img_files = file.readlines()
 
         self.label_files = [
-            path.replace("images", "labels").replace(".png", ".txt").replace(".jpg", ".txt")
+            path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt")
             for path in self.img_files
         ]
         self.img_size = img_size
@@ -176,6 +176,9 @@ class ListDataset(Dataset):
                 boxes = torch.from_numpy(boxes.reshape(-1, 5))
             else:
                 boxes = torch.from_numpy(boxes[:,:5].reshape(-1, 5))
+
+            #boxes = torch.from_numpy(np.loadtxt(label_path).reshape(-1, 5))
+
             # Extract coordinates for unpadded + unscaled image
             x1 = w_factor * (boxes[:, 1] - boxes[:, 3] / 2)
             y1 = h_factor * (boxes[:, 2] - boxes[:, 4] / 2)

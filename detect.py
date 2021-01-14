@@ -27,8 +27,9 @@ import cv2
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--image_folder", type=str, default="data/test/images", help="path to dataset")
+    parser.add_argument("--dataset", type=str, default="fes", help='to get the respective normalization values', choices=['theodore', 'fes', 'dst'])
     parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
-    parser.add_argument("--weights_path", type=str, default="weights/yolov3.weights", help="path to weights file")
+    parser.add_argument("--pretrained_weights", type=str, default="weights/yolov3.weights", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
     parser.add_argument("--conf_thres", type=float, default=0.8, help="object confidence threshold")
     parser.add_argument("--nms_thres", type=float, default=0.4, help="iou thresshold for non-maximum suppression")
@@ -46,17 +47,19 @@ if __name__ == "__main__":
     # Set up model
     model = Darknet(opt.model_def, img_size=opt.img_size).to(device)
 
-    if opt.weights_path.endswith(".weights"):
+    if opt.pretrained_weights.endswith(".weights"):
         # Load darknet weights
-        model.load_darknet_weights(opt.weights_path)
+        model.load_darknet_weights(opt.pretrained_weights)
     else:
         # Load checkpoint weights
-        model.load_state_dict(torch.load(opt.weights_path))
+        model.load_state_dict(torch.load(opt.pretrained_weights, map_location=f'{device}'))
 
     model.eval()  # Set in evaluation mode
 
+    train_data = opt.dataset
+
     dataloader = DataLoader(
-        ImageFolder(opt.image_folder, img_size=opt.img_size),
+        ImageFolder(opt.image_folder, img_size=opt.img_size,train_data=train_data),
         batch_size=opt.batch_size,
         shuffle=False,
         num_workers=opt.n_cpu,
@@ -90,8 +93,8 @@ if __name__ == "__main__":
         imgs.extend(img_paths)
         img_detections.extend(detections)
 
-        if batch_i == 0:
-            break
+        # if batch_i == 4:
+        #     break
 
     # Bounding-box colors
     # cmap = plt.get_cmap("tab20b")
