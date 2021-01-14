@@ -39,7 +39,7 @@ def adjust_learning_rate(optimizer, epoch):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=10000, help="number of epochs")
+    parser.add_argument("--epochs", type=int, default=5000, help="number of epochs")
     parser.add_argument("--lr", type=float, default=5e-4, help="learning rate")
     parser.add_argument("--batch_size", type=int, default=10, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     print(opt)
 
     logger = Logger("logs")
-    gpu_no = 2
+    gpu_no = 5
     device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
     torch.cuda.set_device(device.index)
     print(device)
@@ -235,7 +235,7 @@ if __name__ == "__main__":
                     path=valid_path,
                     json_path=valid_annpath,
                     iou_thres=0.5,
-                    conf_thres=0.1,
+                    conf_thres=0.5,
                     nms_thres=0.5,
                     img_size=opt.img_size,
                     batch_size=8,
