@@ -119,7 +119,7 @@ class YOLOLayer(nn.Module):
         self.metrics = {}
         self.img_dim = img_dim
         self.grid_size = 0  # grid size
-        self.angle_range = 360
+        self.angle_range = 360   # 180 or 360
 
 
     def rotation_loss(self,pred_angle,actual_angle):

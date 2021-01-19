@@ -106,7 +106,7 @@ class ListDataset(Dataset):
         self.pixel_norm = pixel_norm
         
         if self.pixel_norm == True:
-
+            print('Training on Normalized Pixels')
             if train_data == 'theodore': 
                 self.mean_t, self.std_t = load_ms('/localdata/saurabh/yolov3/data/theodore_ms.txt')
 
