@@ -23,6 +23,7 @@ from torchvision import datasets
 from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
+import torch.optim.lr_scheduler as lr_scheduler
 
 def adjust_learning_rate(optimizer, epoch):
     # use warmup
@@ -39,7 +40,7 @@ def adjust_learning_rate(optimizer, epoch):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=5000, help="number of epochs")
+    parser.add_argument("--epochs", type=int, default=1000, help="number of epochs")
     parser.add_argument("--lr", type=float, default=5e-4, help="learning rate")
     parser.add_argument("--batch_size", type=int, default=10, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
@@ -51,7 +52,7 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between saving model weights")
     parser.add_argument("--evaluation_interval", type=int, default=1, help="interval evaluations on validation set")
     parser.add_argument("--compute_map", default=False, help="if True computes mAP every tenth batch")
-    parser.add_argument("--multiscale_training", default=True, help="allow for multi-scale training")
+    parser.add_argument("--multiscale_training", default=False, help="allow for multi-scale training")
     opt = parser.parse_args()
     print(opt)
 
@@ -110,7 +111,7 @@ if __name__ == "__main__":
     # )
 
     # Get dataloader
-    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False, pixel_norm=True, train_data=train_dataset)
+    dataset = ListDataset(train_path, augment=False, multiscale=opt.multiscale_training, normalized_labels=False, pixel_norm=True, train_data=train_dataset)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -141,6 +142,9 @@ if __name__ == "__main__":
     ]
 
     for epoch in range(opt.epochs):
+        ### Use lr_scheduler
+        #adjust_learning_rate(optimizer,epoch)
+
         model.train()
         start_time = time.time()
         train_acc_epoch = 0
@@ -158,6 +162,7 @@ if __name__ == "__main__":
                 # Accumulates gradient before each step
                 optimizer.step()
                 optimizer.zero_grad()
+                print(optimizer.param_groups[0]["lr"])
 
             # ----------------
             #   Log progress

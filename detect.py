@@ -65,8 +65,8 @@ def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, 
         imgs.extend(img_paths)
         img_detections.extend(detections)
 
-        if batch_i == 4:
-            break
+        # if batch_i == 4:
+        #     break
 
     colors = [(0,134,213), (220,0,213), (255,0,0), (255, 233, 0), (0,255,0), (0,0,255)]
 
