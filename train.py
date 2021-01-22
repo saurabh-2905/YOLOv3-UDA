@@ -93,9 +93,14 @@ if __name__ == "__main__":
     model.apply(weights_init_normal)
 
     # If specified we start from checkpoint
+    
     if opt.pretrained_weights:
         if opt.pretrained_weights.endswith(".pth"):
-            model.load_state_dict(torch.load(opt.pretrained_weights, map_location=f'cuda:{device.index}'))
+            checkpoint = torch.load(opt.pretrained_weights, map_location=f'cuda:{device.index}')
+            if opt.pretrained_weights.find('opt') != -1:
+                model.load_state_dict(checkpoint['model_state_dict'])
+            else:
+                model.load_state_dict(checkpoint)
         else:
             model.load_darknet_weights(opt.pretrained_weights)
 
@@ -122,6 +127,11 @@ if __name__ == "__main__":
     )
 
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
+    #### Load optimizer state dict if available
+    if opt.pretrained_weights.find('opt') != -1:
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    ##### Use lr scheduler to drop lr after desired number of epochs
+    #scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[300,350,400], gamma=0.5)
 
     metrics = [
         "grid_size",
@@ -216,6 +226,7 @@ if __name__ == "__main__":
             # if batch_i == 500:
             #     break
 
+        #scheduler.step()
         # Calculate loss for each epoch
         train_acc_epoch = train_acc_epoch / (batch_i+1)
         train_loss_epoch = train_loss_epoch / (batch_i+1)
@@ -228,8 +239,6 @@ if __name__ == "__main__":
         print(f'Training Accuracy for Epoch {epoch}: {train_acc_epoch}')
         print(f'Training Loss for Epoch {epoch}: {train_loss_epoch}')
 
-        if epoch % opt.checkpoint_interval == 0:
-            torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)
 
         if epoch % opt.evaluation_interval == 0:
             if epoch != 0:
@@ -263,6 +272,16 @@ if __name__ == "__main__":
                     ap_table += [[c, class_names[c], "%.5f" % AP[i]]]
                 print(AsciiTable(ap_table).table)
                 print(f"---- mAP {AP.mean()}")
+
+        if epoch % opt.checkpoint_interval == 0:
+            torch.save({
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'epoch': epoch,
+                    'loss':  loss,
+                    },f"checkpoints/yolov3_ckpt_opt_%d.pth" % epoch)
+            #model.save_darknet_weights(f"checkpoints/darknet_ckpt_%d.pth" % epoch)
+
                 # #Save image detections
                 # draw_bbox(model=model,
                 #         image_folder=valid_path,
