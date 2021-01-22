@@ -6,7 +6,7 @@ from utils.datasets import *
 from utils.parse_config import *
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6'  # 0,1,2,3,4,5,6
 import sys
 import time
 import datetime
@@ -100,34 +100,41 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
     parser.add_argument("--model_def", type=str, default="config/yolov3-custom-c6.cfg", help="path to model definition file")
-    parser.add_argument("--data_config", type=str, default="config/fes.data", help="path to data config file")
-    parser.add_argument("--weights_path", type=str, default="checkpoints/dst-fes/fesn2_200.pth", help="path to weights file")
+    parser.add_argument("--data_config", type=str, default="config/dst.data", help="path to data config file")
+    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/rotperson1.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
     parser.add_argument("--iou_thres", type=float, default=0.5, help="iou threshold required to qualify as detected")
-    parser.add_argument("--conf_thres", type=float, default=0.1, help="object confidence threshold")
-    parser.add_argument("--nms_thres", type=float, default=0.1, help="iou thresshold for non-maximum suppression")
+    parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
+    parser.add_argument("--nms_thres", type=float, default=0.5, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
+    #parser.add_argument('--train_dataset', type=str, default='dst', help='dataset on which model was trained')
     opt = parser.parse_args()
     print(opt)
 
-    gpu_no = 5
+    gpu_no = 6
     device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
+    if device.type != 'cpu':
+        torch.cuda.set_device(device.index)
+    print(device)
 
     data_config = parse_data_config(opt.data_config)
+    train_path = data_config["train"]
     valid_path = data_config["valid"]
     valid_annpath = data_config["json_val"]
     class_names = load_classes(data_config["names"])
 
-    if valid_path.find('custom') != -1:   ### flag to use same mean and std values for evaluation as well
+    if train_path.find('custom') != -1:   ### flag to use same mean and std values for evaluation as well
         train_dataset = 'theodore'
         print('Testing on Theodore Dataset')
-    elif valid_path.find('fes') != -1:
+    elif train_path.find('fes') != -1:
         train_dataset = 'fes'
         print('Testing on FES dataset')
-    elif valid_path.find('DST') != -1:
+    elif train_path.find('DST') != -1:
         train_dataset = 'dst'
         print('Testing on DST dataset')
+
+   # train_dataset = opt.train_dataset
 
     if len(class_names) == 80:
         class_80 = True
@@ -136,12 +143,18 @@ if __name__ == "__main__":
 
     # Initiate model
     model = Darknet(opt.model_def).to(device)
-    if opt.weights_path.endswith(".weights"):
-        # Load darknet weights
-        model.load_darknet_weights(opt.weights_path)
-    else:
-        # Load checkpoint weights
-        model.load_state_dict(torch.load(opt.weights_path, map_location=device))
+    optimizer = torch.optim.Adam(model.parameters())
+    ### Load checkpoints
+    checkpoint = torch.load(opt.pretrained_weights, map_location=lambda storage, loc:storage)
+    if opt.pretrained_weights:
+        if opt.pretrained_weights.endswith(".pth"):
+            if opt.pretrained_weights.find('opt') != -1:
+                model.load_state_dict(checkpoint['model_state_dict'])
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            else:
+                model.load_state_dict(checkpoint)
+        else:
+            model.load_darknet_weights(opt.pretrained_weights)
 
     print("Compute mAP...")
 
