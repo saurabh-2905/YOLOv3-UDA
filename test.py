@@ -6,7 +6,7 @@ from utils.datasets import *
 from utils.parse_config import *
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6'  # 0,1,2,3,4,5,6
+os.environ['CUDA_VISIBLE_DEVICES'] = ''  # 0,1,2,3,4,5,6
 import sys
 import time
 import datetime
