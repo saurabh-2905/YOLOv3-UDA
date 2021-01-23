@@ -500,9 +500,9 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
         if keep_boxes:
             output[image_i] = torch.stack(keep_boxes)
     
-    # for o_i, out in enumerate(output):
-    #     if out == None:
-    #         output[o_i] = torch.zeros(1,8)
+    for o_i, out in enumerate(output):
+        if out == None:
+            output[o_i] = torch.zeros(1,8)
             
 
     return output

@@ -99,7 +99,7 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
-    parser.add_argument("--model_def", type=str, default="config/yolov3-custom-c6.cfg", help="path to model definition file")
+    parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c6.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/dst.data", help="path to data config file")
     parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/rotperson1.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
@@ -133,6 +133,9 @@ if __name__ == "__main__":
     elif train_path.find('DST') != -1:
         train_dataset = 'dst'
         print('Testing on DST dataset')
+    elif train_path.find('coco') != -1:
+        train_dataset = 'coco'
+        print('Training on COCO dataset')
 
    # train_dataset = opt.train_dataset
 
