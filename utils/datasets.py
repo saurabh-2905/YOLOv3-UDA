@@ -13,6 +13,7 @@ from collections import defaultdict
 from utils.utils import load_ms, write_ms
 from utils.mean_std import calculate_ms
 import glob
+import warnings
 
 
 from utils.augmentations import horisontal_flip
@@ -181,25 +182,28 @@ class ListDataset(Dataset):
 
         targets = None
         if os.path.exists(label_path):
-            boxes = torch.from_numpy(np.loadtxt(label_path).reshape(-1, 6))
-            # Extract coordinates for unpadded + unscaled image
-            x1 = w_factor * (boxes[:, 1] - boxes[:, 3] / 2)
-            y1 = h_factor * (boxes[:, 2] - boxes[:, 4] / 2)
-            x2 = w_factor * (boxes[:, 1] + boxes[:, 3] / 2)
-            y2 = h_factor * (boxes[:, 2] + boxes[:, 4] / 2)
-            # Adjust for added padding
-            x1 += pad[0]
-            y1 += pad[2]
-            x2 += pad[1]
-            y2 += pad[3]
-            # Returns (x, y, w, h)
-            boxes[:, 1] = ((x1 + x2) / 2) / padded_w
-            boxes[:, 2] = ((y1 + y2) / 2) / padded_h
-            boxes[:, 3] *= w_factor / padded_w
-            boxes[:, 4] *= h_factor / padded_h
+            # Ignore warning if file is empty
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                boxes = torch.from_numpy(np.loadtxt(label_path).reshape(-1, 6))
+                # Extract coordinates for unpadded + unscaled image
+                x1 = w_factor * (boxes[:, 1] - boxes[:, 3] / 2)
+                y1 = h_factor * (boxes[:, 2] - boxes[:, 4] / 2)
+                x2 = w_factor * (boxes[:, 1] + boxes[:, 3] / 2)
+                y2 = h_factor * (boxes[:, 2] + boxes[:, 4] / 2)
+                # Adjust for added padding
+                x1 += pad[0]
+                y1 += pad[2]
+                x2 += pad[1]
+                y2 += pad[3]
+                # Returns (x, y, w, h)
+                boxes[:, 1] = ((x1 + x2) / 2) / padded_w
+                boxes[:, 2] = ((y1 + y2) / 2) / padded_h
+                boxes[:, 3] *= w_factor / padded_w
+                boxes[:, 4] *= h_factor / padded_h
 
-            targets = torch.zeros((len(boxes), 7))
-            targets[:, 1:] = boxes
+                targets = torch.zeros((len(boxes), 7))
+                targets[:, 1:] = boxes
 
         # Apply augmentations
         if self.augment:
