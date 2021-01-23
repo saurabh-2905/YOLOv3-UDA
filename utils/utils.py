@@ -459,6 +459,32 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
         image_pred = image_pred[(-score).argsort()]
         class_confs, class_preds = image_pred[:, 6:].max(1, keepdim=True)
         detections = torch.cat((image_pred[:, :6], class_confs.float(), class_preds.float()), 1)
+
+    #     ##### takes boxes for filtering
+    #     boxes = detections[:,0:5] # only [x,y,w,h,a]
+    #     valid = torch.zeros(boxes.shape[0], dtype=torch.bool)
+    #     # the first one is always valid
+    #     valid[0] = True
+    #     # only one candidate at the beginning. Its votes number is 1 (it self)
+    #     votes = [1]
+    #     for i in range(1, boxes.shape[0]):
+    #     # compute IoU with valid boxes
+
+    #         ious = iou_rotated(boxes[i].unsqueeze(0), boxes[valid,:])
+    #         if (ious >= nms_thres).any():
+    #             continue
+    #         # else, this box is valid
+    #         valid[i] = True
+    #         # the votes number of the new candidate BB is 1 (it self)
+    #         votes.append(1)
+    #     selected = detections[valid,:]
+
+    #     if selected:
+    #         output[image_i] = torch.stack(selected)
+
+    # return selected
+
+        
         # Perform non-maximum suppression
         keep_boxes = []
         while detections.size(0):
