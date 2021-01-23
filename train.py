@@ -82,6 +82,9 @@ if __name__ == "__main__":
     elif train_path.find('DST') != -1:
         train_dataset = 'dst'
         print('Training on DST dataset')
+    elif train_path.find('coco') != -1:
+        train_dataset = 'coco'
+        print('Training on COCO dataset')
 
     if len(class_names) == 80:    ### To indicate it is not coco dataset
         class_80 = True
@@ -279,7 +282,7 @@ if __name__ == "__main__":
                     'optimizer_state_dict': optimizer.state_dict(),
                     'epoch': epoch,
                     'loss':  loss,
-                    },f"checkpoints/yolov3_ckpt_opt_%d.pth" % epoch)
+                    },f"checkpoints/yolov3_ckpt_opt_{train_dataset}_%d.pth" % epoch)
             #model.save_darknet_weights(f"checkpoints/darknet_ckpt_%d.pth" % epoch)
 
                 # #Save image detections

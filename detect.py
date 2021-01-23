@@ -137,7 +137,7 @@ def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--image_folder", type=str, default="/localdata/saurabh/yolov3/data/custom/images/val", help="path to dataset")
-    parser.add_argument("--dataset", type=str, default="fes", help='to get the respective normalization values', choices=['theodore', 'fes', 'dst'])
+    parser.add_argument("--dataset", type=str, help='to get the respective normalization values', choices=['theodore', 'fes', 'dst'])
     parser.add_argument("--model_def", type=str, default="config/yolov3-custom-c6.cfg", help="path to model definition file")
     parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/thenorm2_1000.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")

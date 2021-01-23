@@ -31,3 +31,4 @@ config/dst.data
 config/*
 config/custom.data
 *.ipynb
+.ipynb_checkpoints/Visualization tool-checkpoint.ipynb

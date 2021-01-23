@@ -130,6 +130,16 @@ class ListDataset(Dataset):
                     mean_std = [self.mean_t, self.std_t]
                     write_ms( mean_path, mean_std )
 
+            elif train_data == 'coco':
+                mean_path = 'data/coco/coco_ms.txt'
+                if os.path.isfile( mean_path ) == True:
+                    self.mean_t, self.std_t = load_ms(mean_path)
+                else:
+                    coco_imgpath = glob.glob('/localdata/saurabh/yolov3/data/coco/images/train2017/*.jpg')
+                    self.mean_t, self.std_t = calculate_ms(coco_imgpath)
+                    mean_std = [self.mean_t, self.std_t]
+                    write_ms( mean_path, mean_std )
+
     def __getitem__(self, index):
 
         # ---------
