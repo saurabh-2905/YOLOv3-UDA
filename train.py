@@ -40,11 +40,11 @@ def adjust_learning_rate(optimizer, epoch):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=1000, help="number of epochs")
+    parser.add_argument("--epochs", type=int, default=108, help="number of epochs")
     parser.add_argument("--lr", type=float, default=5e-4, help="learning rate")
     parser.add_argument("--batch_size", type=int, default=10, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
-    parser.add_argument("--model_def", type=str, default="config/yolov3-custom-c6.cfg", help="path to model definition file")
+    parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c1.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
     parser.add_argument("--pretrained_weights", type=str, default="weights/darknet53.conv.74", help="if specified starts from checkpoint model")
     parser.add_argument("--n_cpu", type=int, default=6, help="number of cpu threads to use during batch generation")
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     # )
 
     # Get dataloader
-    dataset = ListDataset(train_path, augment=False, multiscale=opt.multiscale_training, normalized_labels=False, pixel_norm=True, train_data=train_dataset)
+    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False, pixel_norm=True, train_data=train_dataset)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -129,7 +129,8 @@ if __name__ == "__main__":
         collate_fn=dataset.collate_fn,
     )
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
+    optimizer = torch.optim.SGD(model.parameters(), lr=opt.lr, momentum=0.9, weight_decay=0.0005)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
     #### Load optimizer state dict if available
     if opt.pretrained_weights.find('opt') != -1:
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -226,7 +227,7 @@ if __name__ == "__main__":
 
             model.seen += imgs.size(0)
 
-            # if batch_i == 500:
+            # if batch_i == 100:
             #     break
 
         #scheduler.step()
@@ -252,7 +253,7 @@ if __name__ == "__main__":
                     path=valid_path,
                     json_path=valid_annpath,
                     iou_thres=0.5,
-                    conf_thres=0.5,
+                    conf_thres=0.3,
                     nms_thres=0.5,
                     img_size=opt.img_size,
                     batch_size=8,
