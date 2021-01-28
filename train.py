@@ -85,6 +85,14 @@ if __name__ == "__main__":
     elif train_path.find('coco') != -1:
         train_dataset = 'coco'
         print('Training on COCO dataset')
+    elif train_path.find('cepdof') != -1:
+        train_dataset = 'cepdof_light'
+        print('Training on CEPDOF dataset')
+    elif train_path.find('mwr') != -1:
+        train_dataset = 'mwr'
+        print('Training on MWR dataset')
+    else:
+        raise FileNotFoundError('Invalid Dataset')
 
     if len(class_names) == 80:    ### To indicate it is not coco dataset
         class_80 = True
@@ -243,6 +251,14 @@ if __name__ == "__main__":
         print(f'Training Accuracy for Epoch {epoch}: {train_acc_epoch}')
         print(f'Training Loss for Epoch {epoch}: {train_loss_epoch}')
 
+        if epoch % opt.checkpoint_interval == 0:
+            model.eval()
+            torch.save({
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'epoch': epoch,
+                    'loss':  loss,
+                    },f"checkpoints/yolov3_ckpt_opt_{train_dataset}_%d.pth" % epoch)
 
         if epoch % opt.evaluation_interval == 0:
             if epoch != 0:
@@ -256,7 +272,7 @@ if __name__ == "__main__":
                     conf_thres=0.3,
                     nms_thres=0.5,
                     img_size=opt.img_size,
-                    batch_size=8,
+                    batch_size=opt.batch_size,
                     class_80=class_80,
                     gpu_num=gpu_no,
                     train_data= train_dataset,
@@ -277,13 +293,6 @@ if __name__ == "__main__":
                 print(AsciiTable(ap_table).table)
                 print(f"---- mAP {AP.mean()}")
 
-        if epoch % opt.checkpoint_interval == 0:
-            torch.save({
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'epoch': epoch,
-                    'loss':  loss,
-                    },f"checkpoints/yolov3_ckpt_opt_{train_dataset}_%d.pth" % epoch)
             #model.save_darknet_weights(f"checkpoints/darknet_ckpt_%d.pth" % epoch)
 
                 # #Save image detections

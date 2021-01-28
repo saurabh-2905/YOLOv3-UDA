@@ -99,12 +99,12 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
-    parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c6.cfg", help="path to model definition file")
-    parser.add_argument("--data_config", type=str, default="config/dst.data", help="path to data config file")
-    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/rotperson1.pth", help="path to weights file")
+    parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c1.cfg", help="path to model definition file")
+    parser.add_argument("--data_config", type=str, default="config/testing.data", help="path to data config file")
+    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/yolov3_ckpt_opt_coco_23.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
     parser.add_argument("--iou_thres", type=float, default=0.5, help="iou threshold required to qualify as detected")
-    parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
+    parser.add_argument("--conf_thres", type=float, default=0.3, help="object confidence threshold")
     parser.add_argument("--nms_thres", type=float, default=0.5, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
@@ -136,6 +136,12 @@ if __name__ == "__main__":
     elif train_path.find('coco') != -1:
         train_dataset = 'coco'
         print('Training on COCO dataset')
+    elif train_path.find('cepdof') != -1:
+        train_dataset = 'cepdof_light'
+        print('Training on CEPDOF dataset')
+    else:
+        raise FileNotFoundError('Invalid Dataset')
+
 
    # train_dataset = opt.train_dataset
 
