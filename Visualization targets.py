@@ -28,7 +28,7 @@ import cv2
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_folder", type=str, default="data/coco/val2017_paths.txt", help="path to dataset")    
+    parser.add_argument("--image_folder", type=str, default="data/fes/personbbox_paths.txt", help="path to dataset")    
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
@@ -56,11 +56,15 @@ if __name__ == "__main__":
 
     imgs = []  # Stores image paths
     img_detections = []  # Stores detections for each image index
+    img_detected = 0    ### keep count of detected images 
 
     print("\nPerforming object detection:")
     prev_time = time.time()
     for batch_i, (img_paths, _ , targets) in enumerate(dataloader):
         
+        if targets == None:
+            continue
+
         targets[..., 2:6] = xywh2xyxy(targets[..., 2:6])
         targets[..., 2:6] *= opt.img_size
 
@@ -75,8 +79,9 @@ if __name__ == "__main__":
         # Save image and detections
         imgs.extend(img_paths)
         img_detections.extend(annotations)
+        img_detected += 1
 
-        if batch_i == 4:
+        if img_detected == 10:
             break
 
     # Bounding-box colors
