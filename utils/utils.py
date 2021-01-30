@@ -374,20 +374,24 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
 
                 # iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
 
+                try:
+                    rot_box1 = Polygon( [ rot_box1[0], rot_box1[1], rot_box1[2], rot_box1[3] ] )
+                    rot_box2 = Polygon( [ rot_box2[0], rot_box2[1], rot_box2[2], rot_box2[3] ] )
 
-                rot_box1 = Polygon( [ rot_box1[0], rot_box1[1], rot_box1[2], rot_box1[3] ] )
-                rot_box2 = Polygon( [ rot_box2[0], rot_box2[1], rot_box2[2], rot_box2[3] ] )
+                    if rot_box1.is_valid == False or rot_box2.is_valid == False:
+                        rot_box1 = rot_box1.buffer(0)
+                        rot_box2 = rot_box2.buffer(0)
 
-                if rot_box1.is_valid == False or rot_box2.is_valid == False:
-                    rot_box1 = rot_box1.buffer(0)
-                    rot_box2 = rot_box2.buffer(0)
+                    # Intersection area
+                    inter_area = rot_box1.intersection(rot_box2).area
+                    # Union Area
+                    union_area = rot_box1.union(rot_box2).area
 
-                # Intersection area
-                inter_area = rot_box1.intersection(rot_box2).area
-                # Union Area
-                union_area = rot_box1.union(rot_box2).area
-
-                iou = inter_area / (union_area + 1e-9)
+                    iou = inter_area / (union_area + 1e-9)
+                except Exception as inst:
+                    #print(inst)
+                    iou = 1e-9
+                    pass
 
             iou_all[i] = iou
 
@@ -426,18 +430,23 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
 
                 # iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
 
-                rot_box1 = Polygon( [ rot_box1[0], rot_box1[1], rot_box1[2], rot_box1[3] ] )
-                rot_box2 = Polygon( [ rot_box2[0], rot_box2[1], rot_box2[2], rot_box2[3] ] )
+                try:
+                    rot_box1 = Polygon( [ rot_box1[0], rot_box1[1], rot_box1[2], rot_box1[3] ] )
+                    rot_box2 = Polygon( [ rot_box2[0], rot_box2[1], rot_box2[2], rot_box2[3] ] )
 
-                if rot_box1.is_valid == False or rot_box2.is_valid == False:
-                    rot_box1 = rot_box1.buffer(0)
-                    rot_box2 = rot_box2.buffer(0)
-                # Intersection area
-                inter_area = rot_box1.intersection(rot_box2).area
-                # Union Area
-                union_area = rot_box1.union(rot_box2).area
+                    if rot_box1.is_valid == False or rot_box2.is_valid == False:
+                        rot_box1 = rot_box1.buffer(0)
+                        rot_box2 = rot_box2.buffer(0)
+                    # Intersection area
+                    inter_area = rot_box1.intersection(rot_box2).area
+                    # Union Area
+                    union_area = rot_box1.union(rot_box2).area
 
-                iou = inter_area / union_area
+                    iou = inter_area / union_area
+                except Exception as inst:
+                    #print(inst)
+                    iou = 1e-9
+                    pass
 
 
             iou_all[i] = iou
