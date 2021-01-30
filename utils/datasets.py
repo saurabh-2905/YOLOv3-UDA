@@ -129,6 +129,37 @@ class ListDataset(Dataset):
                     mean_std = [self.mean_t, self.std_t]
                     write_ms( mean_path, mean_std )
 
+            elif train_data == 'coco':
+                mean_path = 'data/coco/coco_ms.txt'
+                if os.path.isfile( mean_path ) == True:
+                    self.mean_t, self.std_t = load_ms(mean_path)
+                else:
+                    coco_imgpath = glob.glob('/localdata/saurabh/yolov3/data/coco/images/train2017/*.jpg')
+                    self.mean_t, self.std_t = calculate_ms(coco_imgpath)
+                    mean_std = [self.mean_t, self.std_t]
+                    write_ms( mean_path, mean_std )
+
+            elif train_data == 'cepdof_light':
+                mean_path = 'data/cepdof/cepdof_ms.txt'
+                if os.path.isfile( mean_path ) == True:
+                    self.mean_t, self.std_t = load_ms(mean_path)
+                else:
+                    cepdof_imgpath = glob.glob('/localdata/saurabh/yolov3/data/cepdof/images/person/*')
+                    self.mean_t, self.std_t = calculate_ms(cepdof_imgpath)
+                    mean_std = [self.mean_t, self.std_t]
+                    write_ms( mean_path, mean_std )
+
+            elif train_data == 'mwr':
+                mean_path = 'data/cepdof/mwr_ms.txt'
+                if os.path.isfile( mean_path ) == True:
+                    self.mean_t, self.std_t = load_ms(mean_path)
+                else:
+                    mwr_imgpath = glob.glob('/localdata/saurabh/yolov3/data/mwr/images/person/*')
+                    self.mean_t, self.std_t = calculate_ms(mwr_imgpath)
+                    mean_std = [self.mean_t, self.std_t]
+                    write_ms( mean_path, mean_std )
+
+
 
     def __getitem__(self, index):
 
@@ -143,6 +174,7 @@ class ListDataset(Dataset):
         if self.pixel_norm == True:
             img = (Image.open(img_path).convert('RGB'))
             trans = transforms.Compose([
+                transforms.ColorJitter(0.3, 0.3, 0.3, 0.3),
                 transforms.ToTensor(),
                 transforms.Normalize(self.mean_t, self.std_t)
                 ])

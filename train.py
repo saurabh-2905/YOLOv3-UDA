@@ -81,6 +81,10 @@ if __name__ == "__main__":
     elif train_path.find('DST') != -1:
         train_dataset = 'dst'
         print('Training on DST dataset')
+    elif train_path.find('cepdof') != -1:
+        train_dataset = 'cepdof'
+        print('Training on DST dataset')
+    
 
     if len(class_names) == 80:    ### To indicate it is not coco dataset
         class_80 = True
