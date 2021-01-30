@@ -348,7 +348,7 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
         for i in range(len(box2)):
             #Check if any element equals to infinity
             if box1[0,0]==np.inf  or box1[0,1]==np.inf or box1[0,2]==np.inf or box1[0,3]==np.inf \
-            or box2[i,0]==np.inf or box2[i,1]==np.inf or box2[i,2]==np.inf or box2[i,3]==np.inf:
+            or box1[0,0]==np.nan  or box1[0,1]==np.nan or box1[0,2]==np.nan or box1[0,3]==np.nan:
                 iou = 1e-12
             else:
                 rot_box1 = calculate_rotated(b1_cx[0], b1_cy[0], b1_w[0], b1_h[0], angle_1[0])
@@ -404,7 +404,7 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
         for i in range(len(box1)):
             #Check if any element equals to infinity
             if box1[i,0]==np.inf or box1[i,1]==np.inf or box1[i,2]==np.inf or box1[i,3]==np.inf \
-            or box2[i,0]==np.inf or box2[i,1]==np.inf or box2[i,2]==np.inf or box2[i,3]==np.inf:
+            or box1[i,0]==np.nan or box1[i,1]==np.nan or box1[i,2]==np.nan or box1[i,3]==np.nan:
                 iou = 1e-12
             else:
                 rot_box1 = calculate_rotated(b1_cx[i], b1_cy[i], b1_w[i], b1_h[i], angle_1[i])
