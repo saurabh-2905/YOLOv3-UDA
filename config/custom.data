@@ -1,4 +1,0 @@
-classes= 6
-train=data/test/single_path.txt
-valid=data/custom/valid.txt
-names=data/class.names

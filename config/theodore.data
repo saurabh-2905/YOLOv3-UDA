@@ -1,5 +1,0 @@
-classes= 6
-train=data/test/paths.txt
-valid=data/coco/5k.txt
-names=data/class.names
-
