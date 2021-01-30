@@ -21,7 +21,7 @@ from torch.autograd import Variable
 import torch.optim as optim
 
 
-def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size, batch_size, class_80, gpu_num, train_data= None):
+def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size, batch_size, class_80, gpu_num, use_angle, train_data= None):
     model.eval()
 
     # # Get dataloader
@@ -65,7 +65,7 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
         imgs = Variable(imgs.type(Tensor), requires_grad=False)
 
         with torch.no_grad():
-            loss, outputs = model(imgs,in_targets)
+            loss, outputs = model(imgs, targets=in_targets, use_angle=use_angle)
             outputs = non_max_suppression(outputs, conf_thres=conf_thres, nms_thres=nms_thres)
 
         val_acc_batch = 0
@@ -101,10 +101,10 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
     parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c1.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/testing.data", help="path to data config file")
-    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/yolov3_ckpt_opt_coco_23.pth", help="path to weights file")
+    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/yolov3_ckpt_opt_dst_540.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
     parser.add_argument("--iou_thres", type=float, default=0.5, help="iou threshold required to qualify as detected")
-    parser.add_argument("--conf_thres", type=float, default=0.3, help="object confidence threshold")
+    parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
     parser.add_argument("--nms_thres", type=float, default=0.5, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")

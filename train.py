@@ -40,7 +40,7 @@ def adjust_learning_rate(optimizer, epoch):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=108, help="number of epochs")
+    parser.add_argument("--epochs", type=int, default=1000, help="number of epochs")
     parser.add_argument("--lr", type=float, default=5e-4, help="learning rate")
     parser.add_argument("--batch_size", type=int, default=10, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
@@ -53,11 +53,12 @@ if __name__ == "__main__":
     parser.add_argument("--evaluation_interval", type=int, default=1, help="interval evaluations on validation set")
     parser.add_argument("--compute_map", default=False, help="if True computes mAP every tenth batch")
     parser.add_argument("--multiscale_training", default=False, help="allow for multi-scale training")
+    parser.add_argument("--use_angle", default=False, help='set flag to train using angle')
     opt = parser.parse_args()
     print(opt)
 
     logger = Logger("logs")
-    gpu_no = 5
+    gpu_no = 6
     device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
     torch.cuda.set_device(device.index)
     print(device)
@@ -137,8 +138,8 @@ if __name__ == "__main__":
         collate_fn=dataset.collate_fn,
     )
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=opt.lr, momentum=0.9, weight_decay=0.0005)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
+    #optimizer = torch.optim.SGD(model.parameters(), lr=opt.lr, momentum=0.9, weight_decay=0.0005)
+    optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
     #### Load optimizer state dict if available
     if opt.pretrained_weights.find('opt') != -1:
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -177,7 +178,7 @@ if __name__ == "__main__":
             imgs = Variable(imgs.to(device))
             targets = Variable(targets.to(device), requires_grad=False)
 
-            loss, outputs = model(imgs, targets)
+            loss, outputs = model(imgs, targets=targets, use_angle=opt.use_angle)
             loss.backward()
 
             if batches_done % opt.gradient_accumulations:
@@ -269,13 +270,14 @@ if __name__ == "__main__":
                     path=valid_path,
                     json_path=valid_annpath,
                     iou_thres=0.5,
-                    conf_thres=0.3,
+                    conf_thres=0.5,
                     nms_thres=0.5,
                     img_size=opt.img_size,
                     batch_size=opt.batch_size,
                     class_80=class_80,
                     gpu_num=gpu_no,
                     train_data= train_dataset,
+                    use_angle=opt.use_angle
                 )
                 evaluation_metrics = [
                     ("val_precision", precision.mean()),

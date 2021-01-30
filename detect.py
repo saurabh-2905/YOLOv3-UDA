@@ -26,7 +26,7 @@ from matplotlib.ticker import NullLocator
 
 import cv2
 
-def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, out_dir, train_data, batch_size=1, n_cpu=0,):
+def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, out_dir, train_data, use_angle, batch_size=1, n_cpu=0,):
     model.eval()  # Set in evaluation mode
 
     dataloader = DataLoader(
@@ -52,7 +52,7 @@ def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, 
 
         # Get detections
         with torch.no_grad():
-            detections = model(input_imgs)
+            detections = model(input_imgs, use_angle=use_angle)
             detections = non_max_suppression(detections, conf_thres, nms_thres)
 
         # Log progress
@@ -147,6 +147,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
     parser.add_argument("--checkpoint_model", type=str, help="path to checkpoint model")
+    parser.add_argument("--use_angle", default=False, help='set flag to train using angle')
     opt = parser.parse_args()
     print(opt)
 
@@ -181,6 +182,7 @@ if __name__ == "__main__":
             out_dir='detection',
             batch_size=opt.batch_size,
             n_cpu=opt.n_cpu,
-            train_data=train_data)
+            train_data=train_data,
+            use_angle=opt.use_angle)
 
     

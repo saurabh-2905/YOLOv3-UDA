@@ -148,7 +148,7 @@ class YOLOLayer(nn.Module):
         self.anchor_w = self.scaled_anchors[:, 0:1].view((1, self.num_anchors, 1, 1))
         self.anchor_h = self.scaled_anchors[:, 1:2].view((1, self.num_anchors, 1, 1))
 
-    def forward(self, x, targets=None, img_dim=None):
+    def forward(self, x, use_angle, targets=None, img_dim=None):
 
         # Tensors for cuda support
         FloatTensor = torch.cuda.FloatTensor if x.is_cuda else torch.FloatTensor
@@ -184,7 +184,10 @@ class YOLOLayer(nn.Module):
         pred_boxes[..., 1] = y.data + self.grid_y
         pred_boxes[..., 2] = torch.exp(w.data) * self.anchor_w
         pred_boxes[..., 3] = torch.exp(h.data) * self.anchor_h
-        pred_boxes[..., 4] =   angle * self.angle_range - (self.angle_range / 2)
+        if use_angle == True:
+            pred_boxes[..., 4] =   angle * self.angle_range - (self.angle_range / 2)
+        else:
+            pred_boxes[...,4]  = 0
 
         pred_boxes_out = pred_boxes.detach().clone()
         pred_boxes_out[...,:4] = pred_boxes_out[...,:4] * self.stride
@@ -221,13 +224,15 @@ class YOLOLayer(nn.Module):
             loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
             loss_w = self.mse_loss(w[obj_mask], tw[obj_mask])
             loss_h = self.mse_loss(h[obj_mask], th[obj_mask])
-            loss_a = self.rotation_loss(pangle_mask, tangle_mask)
             loss_conf_obj = self.bce_loss(pred_conf[obj_mask], tconf[obj_mask])
             loss_conf_noobj = self.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
             loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
             loss_cls = self.bce_loss(pred_cls[obj_mask], tcls[obj_mask])
-            total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls + loss_a
-
+            if use_angle==True:
+                loss_a = self.rotation_loss(pangle_mask, tangle_mask)
+                total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls + loss_a
+            else:
+                total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
             # Metrics
             cls_acc = 100 * class_mask[obj_mask].mean()
             conf_obj = pred_conf[obj_mask].mean()
@@ -240,23 +245,43 @@ class YOLOLayer(nn.Module):
             recall50 = torch.sum(iou50 * detected_mask) / (obj_mask.sum() + 1e-16)
             recall75 = torch.sum(iou75 * detected_mask) / (obj_mask.sum() + 1e-16)
 
-            self.metrics = {
-                "loss": to_cpu(total_loss).item(),
-                "x": to_cpu(loss_x).item(),
-                "y": to_cpu(loss_y).item(),
-                "w": to_cpu(loss_w).item(),
-                "h": to_cpu(loss_h).item(),
-                "angle": to_cpu(loss_a).item(),
-                "conf": to_cpu(loss_conf).item(),
-                "cls": to_cpu(loss_cls).item(),
-                "cls_acc": to_cpu(cls_acc).item(),
-                "recall50": to_cpu(recall50).item(),
-                "recall75": to_cpu(recall75).item(),
-                "precision": to_cpu(precision).item(),
-                "conf_obj": to_cpu(conf_obj).item(),
-                "conf_noobj": to_cpu(conf_noobj).item(),
-                "grid_size": grid_size,
-            }
+            if use_angle== True:
+                    self.metrics = {
+                    "loss": to_cpu(total_loss).item(),
+                    "x": to_cpu(loss_x).item(),
+                    "y": to_cpu(loss_y).item(),
+                    "w": to_cpu(loss_w).item(),
+                    "h": to_cpu(loss_h).item(),
+                    "angle": to_cpu(loss_a).item(),
+                    "conf": to_cpu(loss_conf).item(),
+                    "cls": to_cpu(loss_cls).item(),
+                    "cls_acc": to_cpu(cls_acc).item(),
+                    "recall50": to_cpu(recall50).item(),
+                    "recall75": to_cpu(recall75).item(),
+                    "precision": to_cpu(precision).item(),
+                    "conf_obj": to_cpu(conf_obj).item(),
+                    "conf_noobj": to_cpu(conf_noobj).item(),
+                    "grid_size": grid_size,
+                }
+
+            else:
+                self.metrics = {
+                    "loss": to_cpu(total_loss).item(),
+                    "x": to_cpu(loss_x).item(),
+                    "y": to_cpu(loss_y).item(),
+                    "w": to_cpu(loss_w).item(),
+                    "h": to_cpu(loss_h).item(),
+                    #"angle": to_cpu(loss_a).item(),
+                    "conf": to_cpu(loss_conf).item(),
+                    "cls": to_cpu(loss_cls).item(),
+                    "cls_acc": to_cpu(cls_acc).item(),
+                    "recall50": to_cpu(recall50).item(),
+                    "recall75": to_cpu(recall75).item(),
+                    "precision": to_cpu(precision).item(),
+                    "conf_obj": to_cpu(conf_obj).item(),
+                    "conf_noobj": to_cpu(conf_noobj).item(),
+                    "grid_size": grid_size,
+                }
 
             return output, total_loss
 
@@ -273,7 +298,7 @@ class Darknet(nn.Module):
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
 
-    def forward(self, x, targets=None):
+    def forward(self, x, use_angle, targets=None):
         img_dim = x.shape[2]
         loss = 0
         layer_outputs, yolo_outputs = [], []
@@ -286,7 +311,7 @@ class Darknet(nn.Module):
                 layer_i = int(module_def["from"])
                 x = layer_outputs[-1] + layer_outputs[layer_i]
             elif module_def["type"] == "yolo":
-                x, layer_loss = module[0](x, targets, img_dim)
+                x, layer_loss = module[0](x, targets=targets, img_dim=img_dim, use_angle=use_angle)
                 loss += layer_loss
                 yolo_outputs.append(x)
             layer_outputs.append(x)
