@@ -377,6 +377,11 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
 
                 rot_box1 = Polygon( [ rot_box1[0], rot_box1[1], rot_box1[2], rot_box1[3] ] )
                 rot_box2 = Polygon( [ rot_box2[0], rot_box2[1], rot_box2[2], rot_box2[3] ] )
+
+                if rot_box1.is_valid == False or rot_box2.is_valid == False:
+                    rot_box1 = rot_box1.buffer(0)
+                    rot_box2 = rot_box2.buffer(0)
+
                 # Intersection area
                 inter_area = rot_box1.intersection(rot_box2).area
                 # Union Area
@@ -423,6 +428,10 @@ def iou_rotated(box1, box2, x1y1x2y2=True):
 
                 rot_box1 = Polygon( [ rot_box1[0], rot_box1[1], rot_box1[2], rot_box1[3] ] )
                 rot_box2 = Polygon( [ rot_box2[0], rot_box2[1], rot_box2[2], rot_box2[3] ] )
+
+                if rot_box1.is_valid == False or rot_box2.is_valid == False:
+                    rot_box1 = rot_box1.buffer(0)
+                    rot_box2 = rot_box2.buffer(0)
                 # Intersection area
                 inter_area = rot_box1.intersection(rot_box2).area
                 # Union Area
