@@ -230,10 +230,10 @@ class ListDataset(Dataset):
             targets = torch.zeros((len(boxes), 6))
             targets[:, 1:] = boxes
 
-        # Apply augmentations
-        if self.augment:
-            if np.random.random() < 0.5:
-                img, targets = horisontal_flip(img, targets)
+            # Apply augmentations
+            if self.augment:
+                if np.random.random() < 0.5:
+                    img, targets = horisontal_flip(img, targets)
 
         return img_path, img, targets
 
