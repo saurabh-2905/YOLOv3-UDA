@@ -207,7 +207,7 @@ class ListDataset(Dataset):
             if boxes.size == 0:
                 boxes = torch.from_numpy(boxes.reshape(-1, 5))
             else:
-                boxes = torch.from_numpy(boxes[:,:5].reshape(-1, 5))
+                boxes = torch.from_numpy(boxes[...,:5].reshape(-1, 5))
 
             #boxes = torch.from_numpy(np.loadtxt(label_path).reshape(-1, 5))
 
