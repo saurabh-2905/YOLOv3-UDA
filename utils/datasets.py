@@ -93,7 +93,7 @@ class ListDataset(Dataset):
             self.img_files = file.readlines()
 
         self.label_files = [
-            path.replace("images", "labels").replace(".png", ".txt").replace(".jpg", ".txt")
+            path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt")
             for path in self.img_files
         ]
         self.img_size = img_size
@@ -174,7 +174,7 @@ class ListDataset(Dataset):
         if self.pixel_norm == True:
             img = (Image.open(img_path).convert('RGB'))
             trans = transforms.Compose([
-                transforms.ColorJitter(0.1, 0.1, 0.1, 0.1),
+                transforms.ColorJitter(0.3, 0.3, 0.3, 0.3),
                 transforms.ToTensor(),
                 transforms.Normalize(self.mean_t, self.std_t)
                 ])
@@ -225,10 +225,10 @@ class ListDataset(Dataset):
                 targets = torch.zeros((len(boxes), 7))
                 targets[:, 1:] = boxes
 
-        # Apply augmentations
-        if self.augment:
-            if np.random.random() < 0.5:
-                img, targets = horisontal_flip(img, targets)
+            # Apply augmentations
+            if self.augment:
+                if np.random.random() < 0.5:
+                    img, targets = horisontal_flip(img, targets)
 
         return img_path, img, targets
 
