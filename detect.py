@@ -26,12 +26,12 @@ import cv2
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_folder", type=str, default="data/test/images", help="path to dataset")
+    parser.add_argument("--image_folder", type=str, default="data/samples/", help="path to dataset")
     parser.add_argument("--dataset", type=str, default="fes", help='to get the respective normalization values', choices=['theodore', 'fes', 'dst'])
-    parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
-    parser.add_argument("--pretrained_weights", type=str, default="weights/yolov3.weights", help="path to weights file")
-    parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
-    parser.add_argument("--conf_thres", type=float, default=0.8, help="object confidence threshold")
+    parser.add_argument("--model_def", type=str, default="config/yolov3-standard-c1.cfg", help="path to model definition file")
+    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/baseline1_theo.pth", help="path to weights file")
+    parser.add_argument("--class_path", type=str, default="data/person.names", help="path to class label file")
+    parser.add_argument("--conf_thres", type=float, default=0.6, help="object confidence threshold")
     parser.add_argument("--nms_thres", type=float, default=0.4, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
