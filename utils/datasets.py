@@ -150,7 +150,7 @@ class ListDataset(Dataset):
                     write_ms( mean_path, mean_std )
 
             elif train_data == 'mwr':
-                mean_path = 'data/cepdof/mwr_ms.txt'
+                mean_path = 'data/mwr/mwr_ms.txt'
                 if os.path.isfile( mean_path ) == True:
                     self.mean_t, self.std_t = load_ms(mean_path)
                 else:
@@ -246,7 +246,11 @@ class ListDataset(Dataset):
             boxes[:, 0] = i
         # Remove empty placeholder targets
         targets = [boxes for boxes in targets if boxes is not None]
-        targets = torch.cat(targets, 0)
+
+        try:
+            targets = torch.cat(targets, 0)
+        except RuntimeError as e_inst:
+            targets = None
 
         # Selects new image size every tenth batch
         if self.multiscale and self.batch_count % 10 == 0:
