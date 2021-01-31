@@ -11,6 +11,7 @@ import time
 import datetime
 import argparse
 import tqdm
+os.environ['CUDA_VISIBLE_DEVICES'] = ''  ## 0,1,2,3,4,5,6
 
 import torch
 from torch.utils.data import DataLoader
@@ -83,14 +84,14 @@ def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
-    parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
-    parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
-    parser.add_argument("--weights_path", type=str, default="weights/yolov3.weights", help="path to weights file")
-    parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
+    parser.add_argument("--batch_size", type=int, default=10, help="size of each image batch")
+    parser.add_argument("--model_def", type=str, default="config/yolov3-standard-c1.cfg", help="path to model definition file")
+    parser.add_argument("--data_config", type=str, default="config/testing.data", help="path to data config file")
+    parser.add_argument("--weights_path", type=str, default="checkpoints/dst-fes/baseline1_theo.pth", help="path to weights file")
+    parser.add_argument("--class_path", type=str, default="data/person.names", help="path to class label file")
     parser.add_argument("--iou_thres", type=float, default=0.5, help="iou threshold required to qualify as detected")
-    parser.add_argument("--conf_thres", type=float, default=0.001, help="object confidence threshold")
-    parser.add_argument("--nms_thres", type=float, default=0.5, help="iou thresshold for non-maximum suppression")
+    parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
+    parser.add_argument("--nms_thres", type=float, default=0.4, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
     opt = parser.parse_args()
@@ -98,21 +99,27 @@ if __name__ == "__main__":
 
     gpu_no = 5
     device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
+    print(device)
 
     data_config = parse_data_config(opt.data_config)
+    train_path = data_config["train"]
     valid_path = data_config["valid"]
     valid_annpath = data_config["json_val"]
     class_names = load_classes(data_config["names"])
 
-    if valid_path.find('custom') != -1:   ### flag to use same mean and std values for evaluation as well
+    print(f'Testing Dataset: {valid_path}')
+    if train_path.find('custom') != -1:   ### flag to use same mean and std values for evaluation as well
         train_dataset = 'theodore'
-        print('Testing on Theodore Dataset')
-    elif valid_path.find('fes') != -1:
+        print('Normalize on Theodore Dataset')
+    elif train_path.find('fes') != -1:
         train_dataset = 'fes'
-        print('Testing on FES dataset')
-    elif valid_path.find('DST') != -1:
+        print('Normalize on FES dataset')
+    elif train_path.find('DST') != -1:
         train_dataset = 'dst'
-        print('Testing on DST dataset')
+        print('Normalize on DST dataset')
+    elif train_path.find('cepdof') != -1:
+        train_dataset = 'cepdof'
+        print('Normalize on DST dataset')
 
     if len(class_names) == 80:
         class_80 = True
