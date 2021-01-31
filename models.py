@@ -210,6 +210,7 @@ class YOLOLayer(nn.Module):
                 target=targets,
                 anchors=self.scaled_anchors,
                 ignore_thres=self.ignore_thres,
+                use_angle=use_angle,
             )
 
             # Convert both the angles to radian for loss calculation

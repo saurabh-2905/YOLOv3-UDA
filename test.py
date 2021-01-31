@@ -66,7 +66,7 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
 
         with torch.no_grad():
             loss, outputs = model(imgs, targets=in_targets, use_angle=use_angle)
-            outputs = non_max_suppression(outputs, conf_thres=conf_thres, nms_thres=nms_thres)
+            outputs = non_max_suppression(outputs, conf_thres=conf_thres, nms_thres=nms_thres, use_angle=use_angle)
 
         val_acc_batch = 0
         for j, yolo in enumerate(model.yolo_layers):
@@ -78,7 +78,7 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
         val_acc_epoch += val_acc_batch / 3
         val_loss_epoch += loss.item()
 
-        sample_metrics += get_batch_statistics(outputs, targets, iou_threshold=iou_thres)
+        sample_metrics += get_batch_statistics(outputs, targets, iou_threshold=iou_thres, use_angle=use_angle)
         # # Save image paths and detections
         # img_paths.extend(path)
         # img_detections.extend(outputs)
