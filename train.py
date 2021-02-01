@@ -262,7 +262,7 @@ if __name__ == "__main__":
                     },f"checkpoints/yolov3_ckpt_opt_{train_dataset}_%d.pth" % epoch)
 
         if epoch % opt.evaluation_interval == 0:
-            if epoch != 0:
+            if epoch >= 0:
                 print("\n---- Evaluating Model ----")
                 # Evaluate the model on the validation set
                 precision, recall, AP, f1, ap_class, val_acc, val_loss = evaluate(
