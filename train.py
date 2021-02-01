@@ -55,7 +55,7 @@ if __name__ == "__main__":
     print(opt)
 
     logger = Logger("logs")
-    gpu_no = 5
+    gpu_no = 6
     device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
     torch.cuda.set_device(device.index)
     print(device)
@@ -218,7 +218,7 @@ if __name__ == "__main__":
             torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)
         
         if epoch % opt.evaluation_interval == 0:
-            if epoch != 0:
+            if epoch >= 0:
                 print("\n---- Evaluating Model ----")
                 # Evaluate the model on the validation set
                 precision, recall, AP, f1, ap_class, val_acc, val_loss = evaluate(
