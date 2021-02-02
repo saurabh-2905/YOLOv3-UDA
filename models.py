@@ -170,9 +170,10 @@ class YOLOLayer(nn.Module):
         y = torch.sigmoid(prediction[..., 1])  # Center y
         w = prediction[..., 2]  # Width
         h = prediction[..., 3]  # Height
-        pred_conf = torch.sigmoid(prediction[..., 4])  # Conf
-        pred_cls = torch.sigmoid(prediction[..., 5:-1])  # Cls pred.   ### Changes for single class
-        angle = torch.sigmoid(prediction[...,-1])
+        angle = torch.sigmoid(prediction[...,4])
+        pred_conf = torch.sigmoid(prediction[..., 5])  # Conf
+        pred_cls = torch.sigmoid(prediction[..., 6:])  # Cls pred.   ### Changes for single class
+        
 
         # If grid size does not match current we compute new offsets
         if grid_size != self.grid_size:
