@@ -120,6 +120,7 @@ class YOLOLayer(nn.Module):
         self.img_dim = img_dim
         self.grid_size = 0  # grid size
         self.angle_range = 360   # 180 or 360
+        self.rot_l1 = nn.L1Loss(reduction='sum')
 
 
     def rotation_loss(self,pred_angle,actual_angle):
@@ -185,7 +186,7 @@ class YOLOLayer(nn.Module):
         pred_boxes[..., 1] = y.data + self.grid_y
         pred_boxes[..., 2] = torch.exp(w.data) * self.anchor_w
         pred_boxes[..., 3] = torch.exp(h.data) * self.anchor_h
-        if use_angle == True:
+        if use_angle:
             pred_boxes[..., 4] =   angle * self.angle_range - (self.angle_range / 2)
         else:
             pred_boxes[...,4]  = 0
@@ -230,9 +231,10 @@ class YOLOLayer(nn.Module):
             loss_conf_noobj = self.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
             loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
             loss_cls = self.bce_loss(pred_cls[obj_mask], tcls[obj_mask])
-            if use_angle==True:
+            if use_angle:
                 loss_a = self.rotation_loss(pangle_mask, tangle_mask)
-                total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls + loss_a
+                #loss_a = self.rot_l1(pangle_mask, tangle_mask)
+                total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls + 0.2*loss_a
             else:
                 total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
             # Metrics
@@ -247,7 +249,7 @@ class YOLOLayer(nn.Module):
             recall50 = torch.sum(iou50 * detected_mask) / (obj_mask.sum() + 1e-16)
             recall75 = torch.sum(iou75 * detected_mask) / (obj_mask.sum() + 1e-16)
 
-            if use_angle== True:
+            if use_angle:
                     self.metrics = {
                     "loss": to_cpu(total_loss).item(),
                     "x": to_cpu(loss_x).item(),
