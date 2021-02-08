@@ -211,7 +211,7 @@ def get_batch_statistics(outputs, targets, iou_threshold, use_angle):
                     continue
 
                 #iou, box_index = bbox_iou(pred_box.unsqueeze(0), target_boxes).max(0)     # Only checkes once, later if detection with better iou arrives will be ignored
-                if use_angle:
+                if use_angle == 'True':
                     iou = iou_rotated(pred_box.unsqueeze(0), target_boxes)
                 else:
                     iou = bbox_iou(pred_box.unsqueeze(0), target_boxes)
@@ -509,7 +509,7 @@ def non_max_suppression(prediction, use_angle, conf_thres=0.5, nms_thres=0.4):
         # Perform non-maximum suppression
         keep_boxes = []
         while detections.size(0):
-            if use_angle:
+            if use_angle == 'True':
                 large_overlap = iou_rotated(detections[0, :5].unsqueeze(0), detections[:, :5]) > nms_thres
             else:
                 large_overlap = bbox_iou(detections[0, :4].unsqueeze(0), detections[:, :4]) > nms_thres
@@ -590,7 +590,7 @@ def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres, use_angle
     tcls[b, best_n, gj, gi, target_labels] = 1
     # Compute label correctness and iou at best anchor
     class_mask[b, best_n, gj, gi] = (pred_cls[b, best_n, gj, gi].argmax(-1) == target_labels).float()
-    if use_angle:
+    if use_angle == 'True':
         iou_scores[b, best_n, gj, gi] = iou_rotated(pred_boxes[b, best_n, gj, gi], target_boxes, x1y1x2y2=False)
     else:
         iou_scores[b, best_n, gj, gi] = bbox_iou(pred_boxes[b, best_n, gj, gi], target_boxes, x1y1x2y2=False)

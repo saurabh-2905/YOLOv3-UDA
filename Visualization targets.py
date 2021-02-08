@@ -34,6 +34,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
     parser.add_argument("--checkpoint_model", type=str, help="path to checkpoint model")
+    parser.add_argument("--use_angle", default='False', help="path to checkpoint model")
     opt = parser.parse_args()
     print(opt)
 
@@ -41,7 +42,7 @@ if __name__ == "__main__":
 
     os.makedirs("output", exist_ok=True)
 
-    dataset = ListDataset(opt.image_folder, img_size=opt.img_size, normalized_labels=False, augment=False, multiscale=False, pixel_norm=False)
+    dataset = ListDataset(opt.image_folder, img_size=opt.img_size, normalized_labels=False, augment=False, multiscale=False, pixel_norm=False, use_angle=opt.use_angle)
     dataloader = DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -81,7 +82,7 @@ if __name__ == "__main__":
         img_detections.extend(annotations)
         img_detected += 1
 
-        if img_detected == 10:
+        if img_detected == 70:
             break
 
     # Bounding-box colors

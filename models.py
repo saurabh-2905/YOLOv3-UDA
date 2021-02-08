@@ -121,6 +121,8 @@ class YOLOLayer(nn.Module):
         self.grid_size = 0  # grid size
         self.angle_range = 360   # 180 or 360
         self.rot_l1 = nn.L1Loss(reduction='sum')
+        self.entropy_lambda = 0.0001  ## 0.001
+        self.uda_metrics = {}
 
 
     def rotation_loss(self,pred_angle,actual_angle):
@@ -136,6 +138,17 @@ class YOLOLayer(nn.Module):
 
         return loss
 
+    def entropy_loss(self, feature_map):
+        """
+        feature_map: s, c, w, h 
+        output: entropy loss
+        """
+        assert feature_map.dim() == 4
+        n, c, h, w = feature_map.size()
+        entropy_map = - torch.mul(feature_map, torch.log2(feature_map + 1e-30))    # for single class
+        loss = torch.sum(entropy_map) / (n * h * w * c)  ## divide by total number of anchors
+
+        return loss
 
     def compute_grid_offsets(self, grid_size, cuda=True):
         self.grid_size = grid_size
@@ -149,7 +162,7 @@ class YOLOLayer(nn.Module):
         self.anchor_w = self.scaled_anchors[:, 0:1].view((1, self.num_anchors, 1, 1))
         self.anchor_h = self.scaled_anchors[:, 1:2].view((1, self.num_anchors, 1, 1))
 
-    def forward(self, x, use_angle, targets=None, img_dim=None):
+    def forward(self, x, use_angle, uda_method, targets=None, img_dim=None, ):
 
         # Tensors for cuda support
         FloatTensor = torch.cuda.FloatTensor if x.is_cuda else torch.FloatTensor
@@ -174,7 +187,7 @@ class YOLOLayer(nn.Module):
         angle = torch.sigmoid(prediction[...,4])
         pred_conf = torch.sigmoid(prediction[..., 5])  # Conf
         pred_cls = torch.sigmoid(prediction[..., 6:])  # Cls pred.   ### Changes for single class
-        
+        ### pred_prob = torch.nn.softmax(prediction[...,6:])
 
         # If grid size does not match current we compute new offsets
         if grid_size != self.grid_size:
@@ -186,7 +199,7 @@ class YOLOLayer(nn.Module):
         pred_boxes[..., 1] = y.data + self.grid_y
         pred_boxes[..., 2] = torch.exp(w.data) * self.anchor_w
         pred_boxes[..., 3] = torch.exp(h.data) * self.anchor_h
-        if use_angle:
+        if use_angle == 'True':
             pred_boxes[..., 4] =   angle * self.angle_range - (self.angle_range / 2)
         else:
             pred_boxes[...,4]  = 0
@@ -203,53 +216,54 @@ class YOLOLayer(nn.Module):
             -1,
         )
 
-        if targets is None:
-            return output, 0
-        else:
-            iou_scores, class_mask, obj_mask, noobj_mask, tx, ty, tw, th, tangle, tcls, tconf = build_targets(
-                pred_boxes=pred_boxes,
-                pred_cls=pred_cls,
-                target=targets,
-                anchors=self.scaled_anchors,
-                ignore_thres=self.ignore_thres,
-                use_angle=use_angle,
-            )
-
-            # Convert both the angles to radian for loss calculation
-            tangle_mask = tangle[obj_mask] / 180 * np.pi
-            if self.angle_range == 360:
-                pangle_mask = angle[obj_mask] * 2 * np.pi - np.pi
-            elif self.angle_range == 180:
-                pangle_mask = angle[obj_mask] * np.pi - np.pi / 2
-
-            # Loss : Mask outputs to ignore non-existing objects (except with conf. loss)
-            loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
-            loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
-            loss_w = self.mse_loss(w[obj_mask], tw[obj_mask])
-            loss_h = self.mse_loss(h[obj_mask], th[obj_mask])
-            loss_conf_obj = self.bce_loss(pred_conf[obj_mask], tconf[obj_mask])
-            loss_conf_noobj = self.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
-            loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
-            loss_cls = self.bce_loss(pred_cls[obj_mask], tcls[obj_mask])
-            if use_angle:
-                loss_a = self.rotation_loss(pangle_mask, tangle_mask)
-                #loss_a = self.rot_l1(pangle_mask, tangle_mask)
-                total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls + 0.2*loss_a
+        if uda_method is None:
+            if targets is None:
+                return output, 0
             else:
-                total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
-            # Metrics
-            cls_acc = 100 * class_mask[obj_mask].mean()
-            conf_obj = pred_conf[obj_mask].mean()
-            conf_noobj = pred_conf[noobj_mask].mean()
-            conf50 = (pred_conf > 0.5).float()
-            iou50 = (iou_scores > 0.5).float()
-            iou75 = (iou_scores > 0.75).float()
-            detected_mask = conf50 * class_mask * tconf
-            precision = torch.sum(iou50 * detected_mask) / (conf50.sum() + 1e-16)
-            recall50 = torch.sum(iou50 * detected_mask) / (obj_mask.sum() + 1e-16)
-            recall75 = torch.sum(iou75 * detected_mask) / (obj_mask.sum() + 1e-16)
+                iou_scores, class_mask, obj_mask, noobj_mask, tx, ty, tw, th, tangle, tcls, tconf = build_targets(
+                    pred_boxes=pred_boxes,
+                    pred_cls=pred_cls,
+                    target=targets,
+                    anchors=self.scaled_anchors,
+                    ignore_thres=self.ignore_thres,
+                    use_angle=use_angle,
+                )
 
-            if use_angle:
+                # Convert both the angles to radian for loss calculation
+                tangle_mask = tangle[obj_mask] / 180 * np.pi
+                if self.angle_range == 360:
+                    pangle_mask = angle[obj_mask] * 2 * np.pi - np.pi
+                elif self.angle_range == 180:
+                    pangle_mask = angle[obj_mask] * np.pi - np.pi / 2
+
+                # Loss : Mask outputs to ignore non-existing objects (except with conf. loss)
+                loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
+                loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
+                loss_w = self.mse_loss(w[obj_mask], tw[obj_mask])
+                loss_h = self.mse_loss(h[obj_mask], th[obj_mask])
+                loss_conf_obj = self.bce_loss(pred_conf[obj_mask], tconf[obj_mask])
+                loss_conf_noobj = self.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
+                loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
+                loss_cls = self.bce_loss(pred_cls[obj_mask], tcls[obj_mask])
+                if use_angle == 'True':
+                    loss_a = self.rotation_loss(pangle_mask, tangle_mask)
+                    #loss_a = self.rot_l1(pangle_mask, tangle_mask)
+                    total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls + 0.2*loss_a
+                else:
+                    total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
+                # Metrics
+                cls_acc = 100 * class_mask[obj_mask].mean()
+                conf_obj = pred_conf[obj_mask].mean()
+                conf_noobj = pred_conf[noobj_mask].mean()
+                conf50 = (pred_conf > 0.5).float()
+                iou50 = (iou_scores > 0.5).float()
+                iou75 = (iou_scores > 0.75).float()
+                detected_mask = conf50 * class_mask * tconf
+                precision = torch.sum(iou50 * detected_mask) / (conf50.sum() + 1e-16)
+                recall50 = torch.sum(iou50 * detected_mask) / (obj_mask.sum() + 1e-16)
+                recall75 = torch.sum(iou75 * detected_mask) / (obj_mask.sum() + 1e-16)
+
+                if use_angle == 'True':
                     self.metrics = {
                     "loss": to_cpu(total_loss).item(),
                     "x": to_cpu(loss_x).item(),
@@ -268,27 +282,37 @@ class YOLOLayer(nn.Module):
                     "grid_size": grid_size,
                 }
 
-            else:
-                self.metrics = {
-                    "loss": to_cpu(total_loss).item(),
-                    "x": to_cpu(loss_x).item(),
-                    "y": to_cpu(loss_y).item(),
-                    "w": to_cpu(loss_w).item(),
-                    "h": to_cpu(loss_h).item(),
-                    #"angle": to_cpu(loss_a).item(),
-                    "conf": to_cpu(loss_conf).item(),
-                    "cls": to_cpu(loss_cls).item(),
-                    "cls_acc": to_cpu(cls_acc).item(),
-                    "recall50": to_cpu(recall50).item(),
-                    "recall75": to_cpu(recall75).item(),
-                    "precision": to_cpu(precision).item(),
-                    "conf_obj": to_cpu(conf_obj).item(),
-                    "conf_noobj": to_cpu(conf_noobj).item(),
-                    "grid_size": grid_size,
-                }
+                else:
+                    self.metrics = {
+                        "loss": to_cpu(total_loss).item(),
+                        "x": to_cpu(loss_x).item(),
+                        "y": to_cpu(loss_y).item(),
+                        "w": to_cpu(loss_w).item(),
+                        "h": to_cpu(loss_h).item(),
+                        #"angle": to_cpu(loss_a).item(),
+                        "conf": to_cpu(loss_conf).item(),
+                        "cls": to_cpu(loss_cls).item(),
+                        "cls_acc": to_cpu(cls_acc).item(),
+                        "recall50": to_cpu(recall50).item(),
+                        "recall75": to_cpu(recall75).item(),
+                        "precision": to_cpu(precision).item(),
+                        "conf_obj": to_cpu(conf_obj).item(),
+                        "conf_noobj": to_cpu(conf_noobj).item(),
+                        "grid_size": grid_size,
+                    }
+
+                return output, total_loss
+
+        elif uda_method == 'minent':
+            feat_map = pred_cls[...,0]     ### can apply softmax
+            loss_ent = self.entropy_loss(feat_map)
+            total_loss = self.entropy_lambda * loss_ent
+
+            self.uda_metrics = {
+                "minent": to_cpu(total_loss).item(),
+            }
 
             return output, total_loss
-
 
 class Darknet(nn.Module):
     """YOLOv3 object detection model"""
@@ -302,7 +326,7 @@ class Darknet(nn.Module):
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
 
-    def forward(self, x, use_angle, targets=None):
+    def forward(self, x, use_angle=False, targets=None, uda_method=None):
         img_dim = x.shape[2]
         loss = 0
         layer_outputs, yolo_outputs = [], []
@@ -315,12 +339,15 @@ class Darknet(nn.Module):
                 layer_i = int(module_def["from"])
                 x = layer_outputs[-1] + layer_outputs[layer_i]
             elif module_def["type"] == "yolo":
-                x, layer_loss = module[0](x, targets=targets, img_dim=img_dim, use_angle=use_angle)
+                x, layer_loss = module[0](x, targets=targets, img_dim=img_dim, use_angle=use_angle, uda_method=uda_method)
                 loss += layer_loss
                 yolo_outputs.append(x)
             layer_outputs.append(x)
         yolo_outputs = to_cpu(torch.cat(yolo_outputs, 1))
-        return yolo_outputs if targets is None else (loss, yolo_outputs)
+        if uda_method == None:
+            return yolo_outputs if targets is None else (loss, yolo_outputs)
+        elif uda_method == 'minent':
+            return (loss, yolo_outputs)
 
     def load_darknet_weights(self, weights_path):
         """Parses and loads the weights stored in 'weights_path'"""

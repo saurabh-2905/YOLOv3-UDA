@@ -30,7 +30,7 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
     #     dataset, batch_size=batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collate_fn
     # )
 
-    dataset = ListDataset(path, augment=False, multiscale=False, normalized_labels=False, pixel_norm=True, train_data=train_data)
+    dataset = ListDataset(path, augment=False, multiscale=False, normalized_labels=False, pixel_norm=True, train_data=train_data, use_angle=use_angle)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,

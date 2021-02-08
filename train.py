@@ -7,6 +7,7 @@ from utils.datasets import *
 from utils.parse_config import *
 from test import evaluate
 from detect import draw_bbox
+from itertools import cycle
 
 from terminaltables import AsciiTable
 
@@ -41,7 +42,7 @@ def adjust_learning_rate(optimizer, epoch):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=1000, help="number of epochs")
-    parser.add_argument("--lr", type=float, default=5e-4, help="learning rate")
+    parser.add_argument("--lr", type=float, default=1e-5, help="learning rate")
     parser.add_argument("--batch_size", type=int, default=10, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
     parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c1.cfg", help="path to model definition file")
@@ -54,6 +55,7 @@ if __name__ == "__main__":
     parser.add_argument("--compute_map", default=False, help="if True computes mAP every tenth batch")
     parser.add_argument("--multiscale_training", default=False, help="allow for multi-scale training")
     parser.add_argument("--use_angle", default=False, help='set flag to train using angle')
+    parser.add_argument("--uda_method", default=None, choices=['minent'], help="select the domain adaptation method")
     opt = parser.parse_args()
     print(opt)
 
@@ -73,6 +75,9 @@ if __name__ == "__main__":
     train_annpath = data_config["json_train"]
     valid_annpath = data_config["json_val"]
     class_names = load_classes(data_config["names"])
+
+    if opt.uda_method != None:
+        targetdomain_path = data_config["target_domain"]
 
     if train_path.find('custom') != -1:   ### flag to use same mean and std values for evaluation as well
         train_dataset = 'theodore'
@@ -126,9 +131,16 @@ if __name__ == "__main__":
     #     pin_memory=True,
     #     collate_fn=dataset.collate_fn,
     # )
+    optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
+
+    #### Load optimizer state dict if available
+    if opt.pretrained_weights.find('opt') != -1:
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    ##### Use lr scheduler to drop lr after desired number of epochs
+    #scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[300,350,400], gamma=0.5)
 
     # Get dataloader
-    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False, pixel_norm=True, train_data=train_dataset)
+    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False, pixel_norm=True, train_data=train_dataset, use_angle=opt.use_angle)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -137,32 +149,39 @@ if __name__ == "__main__":
         pin_memory=True,
         collate_fn=dataset.collate_fn,
     )
-
-    #optimizer = torch.optim.SGD(model.parameters(), lr=opt.lr, momentum=0.9, weight_decay=0.0005)
-    optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
-    #### Load optimizer state dict if available
-    if opt.pretrained_weights.find('opt') != -1:
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    ##### Use lr scheduler to drop lr after desired number of epochs
-    #scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[300,350,400], gamma=0.5)
+    print('Loaded Training dataset')
 
     metrics = [
-        "grid_size",
-        "loss",
-        "x",
-        "y",
-        "w",
-        "h",
-        "angle",
-        "conf",
-        "cls",
-        "cls_acc",
-        "recall50",
-        "recall75",
-        "precision",
-        "conf_obj",
-        "conf_noobj",
-    ]
+            "grid_size",
+            "loss",
+            "minent",
+            "x",
+            "y",
+            "w",
+            "h",
+            "angle",
+            "conf",
+            "cls",
+            "cls_acc",
+            "recall50",
+            "recall75",
+            "precision",
+            "conf_obj",
+            "conf_noobj",
+        ]
+
+    if opt.uda_method == 'minent':
+        # Get dataloader for target domains
+        target_dataset = ImageFolder(folder_path=targetdomain_path, train_data=train_dataset)
+        targetloader = torch.utils.data.DataLoader(
+            target_dataset, 
+            batch_size=opt.batch_size,
+            shuffle=True,
+            num_workers=opt.n_cpu,
+            pin_memory=True,
+        )
+        print("Loaded Target dataset")
+        targetloader_iter = enumerate( cycle(targetloader) )
 
     for epoch in range(opt.epochs):
         ### Use lr_scheduler
@@ -180,6 +199,15 @@ if __name__ == "__main__":
 
             loss, outputs = model(imgs, targets=targets, use_angle=opt.use_angle)
             loss.backward()
+
+            if opt.uda_method == 'minent':
+                _, batch_uda = targetloader_iter.__next__()
+                images_paths, images_uda = batch_uda
+                images_uda = Variable(images_uda.to(device))
+
+                loss_uda, outputs_uda = model(images_uda, uda_method=opt.uda_method)
+                loss_uda.backward()                
+                 
 
             if batches_done % opt.gradient_accumulations:
                 # Accumulates gradient before each step
@@ -201,6 +229,8 @@ if __name__ == "__main__":
                 formats["grid_size"] = "%2d"
                 formats["cls_acc"] = "%.2f%%"
                 row_metrics = [formats[metric] % yolo.metrics.get(metric, 0) for yolo in model.yolo_layers]
+                if metric == 'minent':
+                    row_metrics = [formats[metric] % yolo.uda_metrics.get(metric,0) for yolo in model.yolo_layers]
                 metric_table += [[metric, *row_metrics]]
 
             # Tensorboard logging
@@ -216,15 +246,27 @@ if __name__ == "__main__":
             batch_acc = batch_acc / 3
             tensorboard_log += [("loss", loss.item())]
             tensorboard_log += [("accu", batch_acc)]
+            
+            if opt.uda_method:
+                tensorboard_log += [("minent_loss", loss_uda.item())]
+                tensorboard_log += [ ( "total_loss", loss.item()+loss_uda.item() ) ]
 
             logger.list_of_scalars_summary(tensorboard_log, batches_done)
 
             # Accumulate loss for every batch of epoch
             train_acc_epoch += batch_acc
-            train_loss_epoch += loss.item()
+            if opt.uda_method:
+                train_loss_epoch += loss.item() + loss_uda.item()
+                log_str += AsciiTable(metric_table).table
+                log_str += f"\nTotal loss {loss.item() + loss_uda.item()}"
+                
+            else:
+                train_loss_epoch += loss.item()
+                log_str += AsciiTable(metric_table).table
+                log_str += f"\nTotal loss {loss.item()}"
+                
 
-            log_str += AsciiTable(metric_table).table
-            log_str += f"\nTotal loss {loss.item()}"
+        
             log_str += f"\nTotal accu {batch_acc}"
 
             # Determine approximate time left for epoch
@@ -236,7 +278,7 @@ if __name__ == "__main__":
 
             model.seen += imgs.size(0)
 
-            # if batch_i == 100:
+            # if batch_i == 10:
             #     break
 
         #scheduler.step()
