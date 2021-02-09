@@ -56,6 +56,7 @@ if __name__ == "__main__":
     parser.add_argument("--multiscale_training", default=False, help="allow for multi-scale training")
     parser.add_argument("--use_angle", default=False, help='set flag to train using angle')
     parser.add_argument("--uda_method", default=None, choices=['minent'], help="select the domain adaptation method")
+    parser.add_argument("--train_data", default=None, choices=['theo_cep', 'imagenet'], help="use the flag to overwrite default parameter or when using UDA method")
     opt = parser.parse_args()
     print(opt)
 
@@ -79,26 +80,29 @@ if __name__ == "__main__":
     if opt.uda_method != None:
         targetdomain_path = data_config["target_domain"]
 
-    if train_path.find('custom') != -1:   ### flag to use same mean and std values for evaluation as well
-        train_dataset = 'theodore'
-        print('Training on Theodore Dataset')
-    elif train_path.find('fes') != -1:
-        train_dataset = 'fes'
-        print('Training on FES dataset')
-    elif train_path.find('DST') != -1:
-        train_dataset = 'dst'
-        print('Training on DST dataset')
-    elif train_path.find('coco') != -1:
-        train_dataset = 'coco'
-        print('Training on COCO dataset')
-    elif train_path.find('cepdof') != -1:
-        train_dataset = 'cepdof_light'
-        print('Training on CEPDOF dataset')
-    elif train_path.find('mwr') != -1:
-        train_dataset = 'mwr'
-        print('Training on MWR dataset')
+    if opt.train_data == None:
+        if train_path.find('custom') != -1:   ### flag to use same mean and std values for evaluation as well
+            train_dataset = 'theodore'
+            print('Training on Theodore Dataset')
+        elif train_path.find('fes') != -1:
+            train_dataset = 'fes'
+            print('Training on FES dataset')
+        elif train_path.find('DST') != -1:
+            train_dataset = 'dst'
+            print('Training on DST dataset')
+        elif train_path.find('coco') != -1:
+            train_dataset = 'coco'
+            print('Training on COCO dataset')
+        elif train_path.find('cepdof') != -1:
+            train_dataset = 'cepdof_light'
+            print('Training on CEPDOF dataset')
+        elif train_path.find('mwr') != -1:
+            train_dataset = 'mwr'
+            print('Training on MWR dataset')
+        else:
+            raise FileNotFoundError('Invalid Dataset')
     else:
-        raise FileNotFoundError('Invalid Dataset')
+        train_dataset = opt.train_data
 
     if len(class_names) == 80:    ### To indicate it is not coco dataset
         class_80 = True

@@ -63,6 +63,12 @@ class ImageFolder(Dataset):
         elif train_data == 'cepdof':
             self.pixel_norm = True
             self.mean_t, self.std_t = load_ms('data/cepdof/cepdof_ms.txt')
+        elif train_data == 'theo_cep':
+            self.pixel_norm = True
+            self.mean_t, self.std_t = load_ms('data/theo_cep_ms.txt')
+        elif train_data == 'imagenet':
+            self.pixel_norm = True
+            self.mean_t, self.std_t = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
         else:
             raise RuntimeError('Invalid dataset')
 
@@ -73,6 +79,9 @@ class ImageFolder(Dataset):
         if self.pixel_norm == True:
             img = (Image.open(img_path).convert('RGB'))
             trans = transforms.Compose([
+                transforms.ColorJitter(0.3, 0.3, 0.3, 0.3),
+                transforms.RandomSizedCrop(self.img_size),
+                transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(self.mean_t, self.std_t)
                 ])
@@ -163,7 +172,7 @@ class ListDataset(Dataset):
                     write_ms( mean_path, mean_std )
 
             elif train_data == 'mwr':
-                mean_path = 'data/cepdof/mwr_ms.txt'
+                mean_path = 'data/mwr/mwr_ms.txt'
                 if os.path.isfile( mean_path ) == True:
                     self.mean_t, self.std_t = load_ms(mean_path)
                 else:
@@ -171,6 +180,22 @@ class ListDataset(Dataset):
                     self.mean_t, self.std_t = calculate_ms(mwr_imgpath)
                     mean_std = [self.mean_t, self.std_t]
                     write_ms( mean_path, mean_std )
+
+            elif train_data == 'theo_cep':
+                mean_path = 'data/theo_cep_ms.txt'
+                if os.path.isfile( mean_path ) == True:
+                    self.mean_t, self.std_t = load_ms(mean_path)
+                else:
+                    cepdof_imgpath = glob.glob('/localdata/saurabh/yolov3/data/cepdof/all_images/*')
+                    custom_imgpath = glob.glob('/localdata/saurabh/yolov3/data/custom/images/person/*')
+                    all_imgpath = cepdof_imgpath + custom_imgpath
+                    self.mean_t, self.std_t = calculate_ms(all_imgpath)
+                    mean_std = [self.mean_t, self.std_t]
+                    write_ms( mean_path, mean_std )
+
+            elif train_data == 'imagenet':
+                self.pixel_norm = True
+                self.mean_t, self.std_t = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
 
     def __getitem__(self, index):
 

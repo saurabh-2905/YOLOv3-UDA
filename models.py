@@ -187,7 +187,7 @@ class YOLOLayer(nn.Module):
         angle = torch.sigmoid(prediction[...,4])
         pred_conf = torch.sigmoid(prediction[..., 5])  # Conf
         pred_cls = torch.sigmoid(prediction[..., 6:])  # Cls pred.   ### Changes for single class
-        ### pred_prob = torch.nn.softmax(prediction[...,6:])
+        # pred_prob = torch.nn.functional.softmax(prediction[...,6:])
 
         # If grid size does not match current we compute new offsets
         if grid_size != self.grid_size:
@@ -304,7 +304,7 @@ class YOLOLayer(nn.Module):
                 return output, total_loss
 
         elif uda_method == 'minent':
-            feat_map = pred_cls[...,0]     ### can apply softmax
+            feat_map =  pred_cls[...,0]    #pred_prob[...,0]     ### can apply softmax
             loss_ent = self.entropy_loss(feat_map)
             total_loss = self.entropy_lambda * loss_ent
 
