@@ -80,7 +80,7 @@ class ImageFolder(Dataset):
             img = (Image.open(img_path).convert('RGB'))
             trans = transforms.Compose([
                 transforms.ColorJitter(0.3, 0.3, 0.3, 0.3),
-                transforms.RandomSizedCrop(self.img_size),
+                transforms.RandomResizedCrop(self.img_size),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(self.mean_t, self.std_t)
