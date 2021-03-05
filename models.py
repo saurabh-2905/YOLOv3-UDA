@@ -140,13 +140,21 @@ class YOLOLayer(nn.Module):
 
     def entropy_loss(self, feature_map):
         """
-        feature_map: s, c, w, h 
+        feature_map: s, k, w, h, c 
         output: entropy loss
         """
-        assert feature_map.dim() == 4
-        n, c, h, w = feature_map.size()
-        entropy_map = - torch.mul(feature_map, torch.log2(feature_map + 1e-30))    # for single class
-        loss = torch.sum(entropy_map) / (n * h * w * c)  ## divide by total number of anchors
+        # assert feature_map.dim() == 5
+        # n, k, h, w, c = feature_map.size()
+
+        # entropy_map = torch.sum( - torch.mul(feature_map, torch.log2(feature_map + 1e-30)), dim=4)  / np.log2(c)  # for single class
+        # loss = torch.sum(entropy_map) / (n * h * w *k )  ## divide by total number of anchors
+
+        ### minent20
+        assert feature_map.dim() == 2
+        s, c = feature_map.size()
+
+        entropy_map = torch.sum( - torch.mul(feature_map, torch.log2(feature_map + 1e-30)), dim=1)  / np.log2(c)
+        loss = torch.sum(entropy_map) / (s) 
 
         return loss
 
@@ -179,6 +187,13 @@ class YOLOLayer(nn.Module):
             .contiguous()
         )
 
+        # if uda_method:
+        ### minent17
+        #     feat_map = x.clone()
+        #     feat_map = (feat_map.view(num_samples, self.num_anchors, self.num_classes + 6, grid_size, grid_size)
+        #     .permute(0, 3, 4, 1, 2).contiguous())
+        #     feat_map = torch.nn.functional.softmax(feat_map, dim=3)
+
         # Get outputs
         x = torch.sigmoid(prediction[..., 0])  # Center x
         y = torch.sigmoid(prediction[..., 1])  # Center y
@@ -187,8 +202,7 @@ class YOLOLayer(nn.Module):
         angle = torch.sigmoid(prediction[...,4])
         pred_conf = torch.sigmoid(prediction[..., 5])  # Conf
         pred_cls = torch.sigmoid(prediction[..., 6:])  # Cls pred.   ### Changes for single class
-        # pred_prob = torch.nn.functional.softmax(prediction[...,6:])
-
+        
         # If grid size does not match current we compute new offsets
         if grid_size != self.grid_size:
             self.compute_grid_offsets(grid_size, cuda=x.is_cuda)
@@ -304,7 +318,23 @@ class YOLOLayer(nn.Module):
                 return output, total_loss
 
         elif uda_method == 'minent':
-            feat_map =  pred_cls[...,0]    #pred_prob[...,0]     ### can apply softmax
+            # #minent 18 
+            # pred_prob = torch.cat((pred_cls , 1-pred_cls ), -1)    ### can create probability of not belonging to person class as values are 
+            # feat_map = pred_prob  
+                                                                    ### normalized between 0-1 using sigmoid
+
+            # ### minent19
+            # pred_prob = torch.nn.functional.softmax(prediction[...,6:], dim=4)  
+            # feat_map = pred_prob      ### can apply softmax
+
+            # ### minent20
+            filter_ind = torch.where( pred_cls > self.ignore_thres )
+            pred_prob = pred_cls[filter_ind]  #[...,0]
+            # pred_prob = torch.unsqueeze(pred_prob, 1)
+            # pred_prob = torch.cat( (pred_prob , 1-pred_prob), -1 ) 
+            pred_prob = torch.nn.functional.softmax(pred_prob, dim=1)
+            feat_map = pred_prob
+            
             loss_ent = self.entropy_loss(feat_map)
             total_loss = self.entropy_lambda * loss_ent
 

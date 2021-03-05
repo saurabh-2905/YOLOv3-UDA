@@ -80,8 +80,8 @@ class ImageFolder(Dataset):
             img = (Image.open(img_path).convert('RGB'))
             trans = transforms.Compose([
                 transforms.ColorJitter(0.3, 0.3, 0.3, 0.3),
-                transforms.RandomResizedCrop(self.img_size),
-                transforms.RandomHorizontalFlip(),
+                # transforms.RandomResizedCrop(self.img_size),
+                # transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(self.mean_t, self.std_t)
                 ])
@@ -102,20 +102,32 @@ class ImageFolder(Dataset):
 
 
 class ListDataset(Dataset):
-    def __init__(self, list_path, use_angle, img_size=416, augment=True, multiscale=True, normalized_labels=True, pixel_norm=False, train_data=None, ):
+    def __init__(self, list_path, use_angle, class_num, img_size=416, augment=True, multiscale=True, normalized_labels=True, pixel_norm=False, train_data=None, ):
         with open(list_path, "r") as file:
             self.img_files = file.readlines()
 
         if use_angle == 'True':
-            self.label_files = [
-                path.replace("images", "labels").replace(".png", ".txt").replace(".jpg", ".txt")
-                for path in self.img_files
-            ]
+            if class_num == 1:
+                self.label_files = [
+                    path.replace("images", "labels").replace(".png", ".txt").replace(".jpg", ".txt")
+                    for path in self.img_files
+                ]
+            elif class_num == 6:
+                self.label_files = [
+                    path.replace("images", "labels").replace(".png", ".txt").replace(".jpg", ".txt").replace('person', 'all_class')
+                    for path in self.img_files
+                ]
         else:
-            self.label_files = [
-                path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt")
-                for path in self.img_files
-            ]
+            if class_num == 1:
+                self.label_files = [
+                    path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt")
+                    for path in self.img_files
+                ]
+            elif class_num == 6:
+                self.label_files = [
+                    path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt").replace('person', 'all_class')
+                    for path in self.img_files
+                ]
         self.img_size = img_size
         self.max_objects = 100
         self.augment = augment

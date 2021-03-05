@@ -6,7 +6,7 @@ from utils.datasets import *
 from utils.parse_config import *
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = ''  # 0,1,2,3,4,5,6
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6'  # 0,1,2,3,4,5,6
 import sys
 import time
 import datetime
@@ -21,7 +21,7 @@ from torch.autograd import Variable
 import torch.optim as optim
 
 
-def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size, batch_size, class_80, gpu_num, use_angle, train_data= None):
+def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size, batch_size, class_80, gpu_num, use_angle, class_num, train_data= None):
     model.eval()
 
     # # Get dataloader
@@ -30,11 +30,11 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
     #     dataset, batch_size=batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collate_fn
     # )
 
-    dataset = ListDataset(path, augment=False, multiscale=False, normalized_labels=False, pixel_norm=True, train_data=train_data, use_angle=use_angle)
+    dataset = ListDataset(path, augment=False, multiscale=False, normalized_labels=False, pixel_norm=True, train_data=train_data, use_angle=use_angle, class_num=class_num)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=False,
+        shuffle=True,
         num_workers=4,
         pin_memory=True,
         collate_fn=dataset.collate_fn,
@@ -83,7 +83,7 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
         # img_paths.extend(path)
         # img_detections.extend(outputs)
 
-        # if batch_i == 0:
+        # if batch_i == 19:
         #         break
 
     # Calculat validation loss and accuracy
@@ -98,16 +98,17 @@ def evaluate(model, path, json_path, iou_thres, conf_thres, nms_thres, img_size,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
-    parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c1.cfg", help="path to model definition file")
+    parser.add_argument("--batch_size", type=int, default=16, help="size of each image batch")
+    parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c2.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/testing.data", help="path to data config file")
-    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/yolov3_ckpt_opt_dst_540.pth", help="path to weights file")
+    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/baseline9_opt_rotc2_theo.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
     parser.add_argument("--iou_thres", type=float, default=0.5, help="iou threshold required to qualify as detected")
     parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
     parser.add_argument("--nms_thres", type=float, default=0.5, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
+    parser.add_argument("--use_angle", default=False, help='set flag to train using angle')
     #parser.add_argument('--train_dataset', type=str, default='dst', help='dataset on which model was trained')
     opt = parser.parse_args()
     print(opt)
@@ -144,11 +145,12 @@ if __name__ == "__main__":
 
 
    # train_dataset = opt.train_dataset
-
+    class_count = len(class_names)
     if len(class_names) == 80:
         class_80 = True
     else:
         class_80 = False
+        
 
     # Initiate model
     model = Darknet(opt.model_def).to(device)
@@ -178,7 +180,9 @@ if __name__ == "__main__":
         batch_size=opt.batch_size,
         class_80=class_80,
         gpu_num=device.index,
-        train_data=train_dataset
+        train_data=train_dataset,
+        use_angle=opt.use_angle,
+        class_num = class_count
     )
 
     print("Average Precisions:")

@@ -42,7 +42,10 @@ if __name__ == "__main__":
 
     os.makedirs("output", exist_ok=True)
 
-    dataset = ListDataset(opt.image_folder, img_size=opt.img_size, normalized_labels=False, augment=False, multiscale=False, pixel_norm=False, use_angle=opt.use_angle)
+    classes = load_classes(opt.class_path)  # Extracts class labels from file
+
+    dataset = ListDataset(opt.image_folder, img_size=opt.img_size, normalized_labels=False, augment=False, 
+                multiscale=False, pixel_norm=False, use_angle=opt.use_angle, class_num=len(classes))
     dataloader = DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -51,7 +54,7 @@ if __name__ == "__main__":
         collate_fn=dataset.collate_fn
     )
 
-    classes = load_classes(opt.class_path)  # Extracts class labels from file
+    
 
     Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
 
@@ -82,7 +85,7 @@ if __name__ == "__main__":
         img_detections.extend(annotations)
         img_detected += 1
 
-        if img_detected == 70:
+        if img_detected == 10:
             break
 
     # Bounding-box colors
