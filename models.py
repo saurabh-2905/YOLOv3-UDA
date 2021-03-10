@@ -328,8 +328,9 @@ class YOLOLayer(nn.Module):
             # feat_map = pred_prob      ### can apply softmax
 
             # ### minent20
-            filter_ind = torch.where( pred_cls > self.ignore_thres )
-            pred_prob = pred_cls[filter_ind]  #[...,0]
+            filter_ind = torch.where( pred_conf > self.ignore_thres )
+            # pred_prob = pred_cls[filter_ind[0], filter_ind[1], filter_ind[2], filter_ind[3]] 
+            pred_prob = prediction[filter_ind[0], filter_ind[1], filter_ind[2], filter_ind[3],6:] 
             # pred_prob = torch.unsqueeze(pred_prob, 1)
             # pred_prob = torch.cat( (pred_prob , 1-pred_prob), -1 ) 
             pred_prob = torch.nn.functional.softmax(pred_prob, dim=1)
