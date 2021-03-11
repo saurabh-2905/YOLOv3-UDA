@@ -340,7 +340,7 @@ class YOLOLayer(nn.Module):
             total_loss = self.entropy_lambda * loss_ent
 
             self.uda_metrics = {
-                "minent": to_cpu(total_loss).item(),
+                "minent": to_cpu(loss_ent).item(),
             }
 
             return output, total_loss

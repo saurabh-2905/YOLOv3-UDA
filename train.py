@@ -12,7 +12,7 @@ from itertools import cycle
 from terminaltables import AsciiTable
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6 ' #0,1,2,3,4,5,6
 import sys
 import time
 import datetime
@@ -64,7 +64,8 @@ if __name__ == "__main__":
     logger = Logger("logs")
     gpu_no = 6
     device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
-    torch.cuda.set_device(device.index)
+    if device.type != 'cpu':
+        torch.cuda.set_device(device.index)
     print(device)
 
     os.makedirs("output", exist_ok=True)
@@ -119,7 +120,7 @@ if __name__ == "__main__":
     
     if opt.pretrained_weights:
         if opt.pretrained_weights.endswith(".pth"):
-            checkpoint = torch.load(opt.pretrained_weights, map_location=f'cuda:{device.index}')
+            checkpoint = torch.load(opt.pretrained_weights, map_location=lambda storage, loc:storage )  #map_location=f'cuda:{device.index}'
             if opt.pretrained_weights.find('opt') != -1:
                 model.load_state_dict(checkpoint['model_state_dict'])
             else:
@@ -127,16 +128,6 @@ if __name__ == "__main__":
         else:
             model.load_darknet_weights(opt.pretrained_weights)
 
-    # # Get dataloader
-    # dataset = ImageAnnotation(folder_path=train_path, json_path=train_annpath, img_size=opt.img_size, augment=True, multiscale=opt.multiscale_training, class_80=class_80)
-    # dataloader = torch.utils.data.DataLoader(
-    #     dataset,
-    #     batch_size=opt.batch_size,
-    #     shuffle=True,
-    #     num_workers=opt.n_cpu,
-    #     pin_memory=True,
-    #     collate_fn=dataset.collate_fn,
-    # )
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
 
     #### Load optimizer state dict if available
@@ -179,7 +170,7 @@ if __name__ == "__main__":
 
     if opt.uda_method == 'minent':
         # Get dataloader for target domains
-        target_dataset = ImageFolder(folder_path=targetdomain_path, train_data=train_dataset)
+        target_dataset = ImageFolder(folder_path=targetdomain_path, train_data=train_dataset, augment=True)
         targetloader = torch.utils.data.DataLoader(
             target_dataset, 
             batch_size=opt.batch_size,
@@ -221,7 +212,7 @@ if __name__ == "__main__":
                 # Accumulates gradient before each step
                 optimizer.step()
                 optimizer.zero_grad()
-                print(optimizer.param_groups[0]["lr"])
+                print(optimizer.param_groups[0]["lr"], opt.lr)
 
             # ----------------
             #   Log progress
@@ -232,6 +223,7 @@ if __name__ == "__main__":
             metric_table = [["Metrics", *[f"YOLO Layer {i}" for i in range(len(model.yolo_layers))]]]
 
             # Log metrics at each YOLO layer
+            minent_loss = 0
             for i, metric in enumerate(metrics):
                 formats = {m: "%.6f" for m in metrics}
                 formats["grid_size"] = "%2d"
@@ -239,6 +231,7 @@ if __name__ == "__main__":
                 row_metrics = [formats[metric] % yolo.metrics.get(metric, 0) for yolo in model.yolo_layers]
                 if metric == 'minent':
                     row_metrics = [formats[metric] % yolo.uda_metrics.get(metric,0) for yolo in model.yolo_layers]
+                    minent_loss = np.array(row_metrics, dtype='float').mean()
                 metric_table += [[metric, *row_metrics]]
 
             # Tensorboard logging
@@ -257,7 +250,7 @@ if __name__ == "__main__":
             
             if epoch >= opt.warmup_iter:
                 if opt.uda_method:
-                    tensorboard_log += [("minent_loss", loss_uda.item())]
+                    tensorboard_log += [ ( "minent_loss", minent_loss ) ]
                     tensorboard_log += [ ( "total_loss", loss.item()+loss_uda.item() ) ]
 
             logger.list_of_scalars_summary(tensorboard_log, batches_done)
