@@ -86,6 +86,14 @@ def xywh2xyxy(x):
     y[..., 3] = x[..., 1] + x[..., 3] / 2
     return y
 
+def xywh2xyxy_np(x):
+    y = np.zeros_like(x)
+    y[..., 0] = x[..., 0] - x[..., 2] / 2
+    y[..., 1] = x[..., 1] - x[..., 3] / 2
+    y[..., 2] = x[..., 0] + x[..., 2] / 2
+    y[..., 3] = x[..., 1] + x[..., 3] / 2
+    return y
+
 def xyxy2xywh(x):
     y = x.new(x.shape)
     w, h = x[..., 2] - x[..., 0], x[..., 3] - x[..., 1]

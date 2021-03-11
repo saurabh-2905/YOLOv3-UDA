@@ -33,3 +33,4 @@ config/custom.data
 *.ipynb
 .ipynb_checkpoints/Visualization tool-checkpoint.ipynb
 testing_script.py
+*.png
