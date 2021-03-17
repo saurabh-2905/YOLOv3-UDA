@@ -46,7 +46,7 @@ def random_resize(images, min_size=288, max_size=448):
 
 
 class ImageFolder(Dataset):
-    def __init__(self, folder_path, train_data, img_size=416, augment=False ):
+    def __init__(self, folder_path, train_data=None, img_size=416, augment=False ):
         self.files = sorted(glob.glob("%s/*.*" % folder_path))
         self.img_size = img_size
         self.pixel_norm = False
@@ -70,6 +70,8 @@ class ImageFolder(Dataset):
         elif train_data == 'imagenet':
             self.pixel_norm = True
             self.mean_t, self.std_t = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+        elif train_data == None:
+            self.pixel_norm = False
         else:
             print('Using default values of Theodore for Normalization')
             self.pixel_norm = True
@@ -113,9 +115,14 @@ class ImageFolder(Dataset):
 
 
 class ListDataset(Dataset):
-    def __init__(self, list_path, use_angle, class_num, img_size=416, augment=True, multiscale=True, normalized_labels=True, pixel_norm=False, train_data=None, ):
+    def __init__(self, list_path, use_angle, class_num, img_size=416, augment=True, multiscale=True, normalized_labels=True, pixel_norm=False, train_data=None, uda_method=None ):
         with open(list_path, "r") as file:
             self.img_files = file.readlines()
+
+        if uda_method == 'fda':
+            self.img_files = [
+                path.replace('person', 'fda') for path in self.img_files
+            ]
 
         if use_angle == 'True':
             if class_num == 1:
@@ -131,12 +138,12 @@ class ListDataset(Dataset):
         else:
             if class_num == 1:
                 self.label_files = [
-                    path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt")
+                    path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt").replace('fda', 'person')
                     for path in self.img_files
                 ]
             elif class_num == 6:
                 self.label_files = [
-                    path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt").replace('person', 'all_class')
+                    path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt").replace('person', 'all_class').replace('fda', 'all_class')
                     for path in self.img_files
                 ]
         self.img_size = img_size
@@ -148,6 +155,7 @@ class ListDataset(Dataset):
         self.max_size = self.img_size + 3 * 32
         self.batch_count = 0
         self.pixel_norm = pixel_norm
+        self.uda_method = uda_method
 
         if use_angle == True:
             self.augment = False

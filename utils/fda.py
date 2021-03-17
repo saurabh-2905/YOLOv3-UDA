@@ -62,6 +62,9 @@ def FDA_source_to_target_np(src_img, trg_img, L=0.1, use_circular=False):
     src_img_np = src_img.cpu().numpy()
     trg_img_np = trg_img.cpu().numpy()
 
+    # src_img_np = np.uint8(src_img_np * 255)
+    # trg_img_np = np.uint8(trg_img_np * 255)
+
     # get fft of both source and target
     fft_src_np = np.fft.fft2(src_img_np, axes=(-2, -1))
     fft_trg_np = np.fft.fft2(trg_img_np, axes=(-2, -1))
@@ -142,38 +145,67 @@ def low_freq_mutate_np(amp_src, amp_trg, L=0.1, use_circular=False):
     a_src = np.fft.ifftshift(a_src, axes=(-2, -1))
     return a_src
 
-if __name__=='__main__':
-    fda_type = 'np' #[np, normal]
-    beta = 0.00
-    src_path = '/localdata/saurabh/yolov3/data/custom/images/person/0026118_img.png'
-    trg_path =  '/localdata/saurabh/yolov3/data/fes/images/person/Record_00773.jpg'
+def adapt_images(src_path, trg_path, fda_type, beta, use_circular=False):
+    '''
+    Arguments
+    src_path: path to source image (str)
+    trg_path: path to target image (str)
+    fda_type: process images as numpy or tensor (str) ['np', 'normal']
+    beta: factor by which low level features must be replaced (int)
+    use_circular: to use circular mask (bool)
+    
+    Returns
+    mixed: the fourier adapted image (w,h,c)
+    src_img: source image
+    trg_img: target image
+    '''
+    
     src_img = transforms.ToTensor()(Image.open(src_path).convert('RGB'))
     trg_img = transforms.ToTensor()(Image.open(trg_path).convert('RGB'))
-    #### resize images to the size of netwrok input
-    src_img = resize(src_img, 416)
-    trg_img = resize(trg_img, 416)
+    #### resize images to the size of netwrok input 
+    trg_img = resize(trg_img, (src_img.shape[1:]) ) 
+
+
 
     if fda_type == 'np':
-        mixed = FDA_source_to_target_np(src_img, trg_img, L=beta, use_circular=False)
+        # print('FDA using numpy')
+        mixed = FDA_source_to_target_np(src_img, trg_img, L=beta, use_circular=use_circular)
         
         src_img = src_img.permute(1,2,0).contiguous()
         trg_img = trg_img.permute(1,2,0).contiguous()
         mixed = mixed.transpose(1,2,0)
         
-        mixed += abs(mixed.min())
+        # mixed += abs(mixed.min())
         
     elif fda_type == 'normal':
-
+        # print('FDA using tensor')
         src_img = torch.unsqueeze(src_img, dim=0)
         trg_img = torch.unsqueeze(trg_img, dim=0)
 
-        mixed = FDA_source_to_target(src_img, trg_img, L=beta, use_circular=False)
+        mixed = FDA_source_to_target(src_img, trg_img, L=beta, use_circular=use_circular)
         
-        src_img = src_img[0].permute(1,2,0).contiguous()
-        trg_img = trg_img[0].permute(1,2,0).contiguous()
-        mixed = mixed[0].permute(1,2,0).contiguous()
+        # src_img = src_img[0].permute(1,2,0).contiguous()
+        # trg_img = trg_img[0].permute(1,2,0).contiguous()
+        # mixed = mixed[0].permute(1,2,0).contiguous()
 
+    return mixed, src_img, trg_img
 
+if __name__=='__main__':
+    fda_type = 'np' #[np, normal]
+    beta = 0.01
+    circle_mask = False
 
+    src_path = '/localdata/saurabh/yolov3/data/custom/images/person/0026118_img.png'
+    trg_path =  '/localdata/saurabh/yolov3/data/fes/images/person/Record_00773.jpg'
+
+    mixed, src_img, trg_img = adapt_images(src_path, trg_path, fda_type, beta, use_circular=circle_mask)
+    mixed = (np.clip(mixed, 0, 1) * 255).astype(np.uint8)
+
+    # mixed = (255.0 / mixed.max() * (mixed - mixed.min())).astype(np.uint8)
+    mixed = Image.fromarray(mixed)
+    mixed.save('trial_fda.png')
+
+    
+    
 
 

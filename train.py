@@ -12,7 +12,7 @@ from itertools import cycle
 from terminaltables import AsciiTable
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6 ' #0,1,2,3,4,5,6
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6' #0,1,2,3,4,5,6
 import sys
 import time
 import datetime
@@ -41,12 +41,12 @@ def adjust_learning_rate(optimizer, epoch):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=1000, help="number of epochs")
+    parser.add_argument("--epochs", type=int, default=100, help="number of epochs")
     parser.add_argument("--lr", type=float, default=1e-5, help="learning rate")
-    parser.add_argument("--batch_size", type=int, default=10, help="size of each image batch")
+    parser.add_argument("--batch_size", type=int, default=16, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
     parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c6.cfg", help="path to model definition file")
-    parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
+    parser.add_argument("--data_config", type=str, default="config/custom.data", help="path to data config file")
     parser.add_argument("--pretrained_weights", type=str, default="weights/yolov3.weights", help="if specified starts from checkpoint model")
     parser.add_argument("--n_cpu", type=int, default=6, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     parser.add_argument("--compute_map", default=False, help="if True computes mAP every tenth batch")
     parser.add_argument("--multiscale_training", default=False, help="allow for multi-scale training")
     parser.add_argument("--use_angle", default=False, help='set flag to train using angle')
-    parser.add_argument("--uda_method", default=None, choices=['minent'], help="select the domain adaptation method")
+    parser.add_argument("--uda_method", default=None, choices=['minent', 'fda'], help="select the domain adaptation method")
     parser.add_argument("--train_data", default=None, choices=['theo_cep', 'imagenet'], help="use the flag to overwrite default parameter or when using UDA method")
     parser.add_argument("--warmup_iter", default=0, type=int, help="specify number of iterations to train before starting with UDA")
     opt = parser.parse_args()
@@ -132,13 +132,14 @@ if __name__ == "__main__":
 
     #### Load optimizer state dict if available
     if opt.pretrained_weights.find('opt') != -1:
+        print('Loading Optimizer State...')
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     ##### Use lr scheduler to drop lr after desired number of epochs
     # scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[7,10,15], gamma=0.5)
 
     # Get dataloader
     dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False, 
-                    pixel_norm=True, train_data=train_dataset, use_angle=opt.use_angle, class_num= class_count)
+                    pixel_norm=True, train_data=train_dataset, use_angle=opt.use_angle, class_num= class_count, uda_method=opt.uda_method)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -249,7 +250,7 @@ if __name__ == "__main__":
             tensorboard_log += [("accu", batch_acc)]
             
             if epoch >= opt.warmup_iter:
-                if opt.uda_method:
+                if opt.uda_method == 'minent':
                     tensorboard_log += [ ( "minent_loss", minent_loss ) ]
                     tensorboard_log += [ ( "total_loss", loss.item()+loss_uda.item() ) ]
 
@@ -257,7 +258,7 @@ if __name__ == "__main__":
 
             # Accumulate loss for every batch of epoch
             train_acc_epoch += batch_acc
-            if opt.uda_method and epoch >= opt.warmup_iter:
+            if opt.uda_method == 'minent' and epoch >= opt.warmup_iter:
                 train_loss_epoch += loss.item() + loss_uda.item()
                 log_str += AsciiTable(metric_table).table
                 log_str += f"\nTotal loss {loss.item() + loss_uda.item()}"
