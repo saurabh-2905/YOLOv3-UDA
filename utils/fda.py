@@ -145,7 +145,7 @@ def low_freq_mutate_np(amp_src, amp_trg, L=0.1, use_circular=False):
     a_src = np.fft.ifftshift(a_src, axes=(-2, -1))
     return a_src
 
-def adapt_images(src_path, trg_path, fda_type, beta, use_circular=False):
+def adapt_images(src_path, trg_path, fda_type, beta, use_circular=False, ):
     '''
     Arguments
     src_path: path to source image (str)
@@ -159,7 +159,12 @@ def adapt_images(src_path, trg_path, fda_type, beta, use_circular=False):
     src_img: source image
     trg_img: target image
     '''
-    
+    # gpu_no = 6
+    # device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
+    # if device.type != 'cpu':
+    #     torch.cuda.set_device(device.index)
+    # # print(device)
+
     src_img = transforms.ToTensor()(Image.open(src_path).convert('RGB'))
     trg_img = transforms.ToTensor()(Image.open(trg_path).convert('RGB'))
     #### resize images to the size of netwrok input 
@@ -179,8 +184,8 @@ def adapt_images(src_path, trg_path, fda_type, beta, use_circular=False):
         
     elif fda_type == 'normal':
         # print('FDA using tensor')
-        src_img = torch.unsqueeze(src_img, dim=0)
-        trg_img = torch.unsqueeze(trg_img, dim=0)
+        src_img = torch.unsqueeze(src_img, dim=0) #.to(device)
+        trg_img = torch.unsqueeze(trg_img, dim=0) #.to(device)
 
         mixed = FDA_source_to_target(src_img, trg_img, L=beta, use_circular=use_circular)
         
