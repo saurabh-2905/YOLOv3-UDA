@@ -59,15 +59,14 @@ def FDA_source_to_target_np(src_img, trg_img, L=0.1, use_circular=False):
     # exchange magnitude
     # input: src_img, trg_img
 
-    src_img_np = src_img.cpu().numpy()
-    trg_img_np = trg_img.cpu().numpy()
-
+    src_img_np = src_img
+    trg_img_np = trg_img
     # src_img_np = np.uint8(src_img_np * 255)
     # trg_img_np = np.uint8(trg_img_np * 255)
 
     # get fft of both source and target
-    fft_src_np = np.fft.fft2(src_img_np, axes=(-2, -1))
-    fft_trg_np = np.fft.fft2(trg_img_np, axes=(-2, -1))
+    fft_src_np = np.fft.fft2(src_img_np, axes=(-2, -1))    #### expected (c,h,w)
+    fft_trg_np = np.fft.fft2(trg_img_np, axes=(-2, -1))     
 
     # extract amplitude and phase of both ffts
     amp_src, pha_src = np.abs(fft_src_np), np.angle(fft_src_np)
@@ -136,9 +135,9 @@ def low_freq_mutate_np(amp_src, amp_trg, L=0.1, use_circular=False):
 
     else:
         h1 = c_h - b
-        h2 = c_h + b #+ 1
+        h2 = c_h + b + 1
         w1 = c_w - b
-        w2 = c_w + b #+ 1
+        w2 = c_w + b + 1
 
         a_src[:, h1:h2, w1:w2] = a_trg[:, h1:h2, w1:w2]
 
@@ -174,10 +173,12 @@ def adapt_images(src_path, trg_path, fda_type, beta, use_circular=False, ):
 
     if fda_type == 'np':
         # print('FDA using numpy')
+        src_img = src_img.cpu().numpy()
+        trg_img = trg_img.cpu().numpy()
         mixed = FDA_source_to_target_np(src_img, trg_img, L=beta, use_circular=use_circular)
         
-        src_img = src_img.permute(1,2,0).contiguous()
-        trg_img = trg_img.permute(1,2,0).contiguous()
+        src_img = src_img.transpose(1,2,0)
+        trg_img = trg_img.transpose(1,2,0)
         mixed = mixed.transpose(1,2,0)
         
         # mixed += abs(mixed.min())

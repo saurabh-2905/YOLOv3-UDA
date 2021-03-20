@@ -14,11 +14,13 @@ from utils.utils import load_ms, write_ms
 from utils.mean_std import calculate_ms
 import glob
 import warnings
+import matplotlib.pyplot as plt
 
 from utils.transforms import *
 from utils.augmentations import DefaultAug
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
+from utils.fda import FDA_source_to_target_np
 
 
 def pad_to_square(img, pad_value):
@@ -115,14 +117,13 @@ class ImageFolder(Dataset):
 
 
 class ListDataset(Dataset):
-    def __init__(self, list_path, use_angle, class_num, img_size=416, augment=True, multiscale=True, normalized_labels=True, pixel_norm=False, train_data=None, uda_method=None ):
+    def __init__(self, list_path, use_angle, class_num, img_size=416, augment=True, multiscale=True, normalized_labels=True,
+                     pixel_norm=False, train_data=None, uda_method=None, beta=0.01, circular=False ):
         with open(list_path, "r") as file:
             self.img_files = file.readlines()
 
         if uda_method == 'fda':
-            self.img_files = [
-                path.replace('person', 'fda') for path in self.img_files
-            ]
+            self.trg_files = glob.glob('/localdata/saurabh/yolov3/data/cepdof/all_images/*')
 
         if use_angle == 'True':
             if class_num == 1:
@@ -138,12 +139,12 @@ class ListDataset(Dataset):
         else:
             if class_num == 1:
                 self.label_files = [
-                    path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt").replace('fda', 'person')
+                    path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt")        #.replace('fda', 'person')
                     for path in self.img_files
                 ]
             elif class_num == 6:
                 self.label_files = [
-                    path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt").replace('person', 'all_class').replace('fda', 'all_class')
+                    path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt").replace('person', 'all_class')           #.replace('fda', 'all_class')
                     for path in self.img_files
                 ]
         self.img_size = img_size
@@ -156,6 +157,8 @@ class ListDataset(Dataset):
         self.batch_count = 0
         self.pixel_norm = pixel_norm
         self.uda_method = uda_method
+        self.beta = beta
+        self.circular = circular
 
         if use_angle == True:
             self.augment = False
@@ -238,7 +241,26 @@ class ListDataset(Dataset):
 
         img_path = self.img_files[index % len(self.img_files)].rstrip()
         #print(img_path)
-        img = np.array(Image.open(img_path).convert('RGB'), dtype=np.uint8)
+        img = np.array(Image.open(img_path).convert('RGB'), dtype=np.uint8) #/255.0
+
+        if self.uda_method == 'fda':
+            trg_path = self.trg_files[ np.random.randint(len(self.trg_files)) ]
+            trg_img = Image.open(trg_path).convert('RGB')
+            trg_img = trg_img.resize(img.shape[:2], resample=Image.NEAREST)
+            # trg_img.save('sample.png')
+            trg_img = np.array(trg_img, dtype=np.uint8) #/255.0
+            
+            img= img.transpose(2,0,1)
+            trg_img= trg_img.transpose(2,0,1)
+
+            img = FDA_source_to_target_np(img, trg_img, L=self.beta, use_circular=self.circular)   ### expect images in (c,h,w)
+            img = img.transpose(1,2,0).astype(np.uint8)
+
+            # img = (np.clip(img, 0, 255)).astype(np.uint8)   ### giet in the format to save
+            plt.imshow(img)
+            plt.savefig(f'fda_samples/{self.circular}_{self.beta}_{os.path.basename(img_path)}')
+
+
 
         # ---------
         #  Label

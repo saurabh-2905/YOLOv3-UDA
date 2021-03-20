@@ -12,7 +12,7 @@ from itertools import cycle
 from terminaltables import AsciiTable
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6' #0,1,2,3,4,5,6
+os.environ['CUDA_VISIBLE_DEVICES'] = ' ' #0,1,2,3,4,5,6
 import sys
 import time
 import datetime
@@ -58,6 +58,8 @@ if __name__ == "__main__":
     parser.add_argument("--uda_method", default=None, choices=['minent', 'fda'], help="select the domain adaptation method")
     parser.add_argument("--train_data", default=None, choices=['theo_cep', 'imagenet'], help="use the flag to overwrite default parameter or when using UDA method")
     parser.add_argument("--warmup_iter", default=0, type=int, help="specify number of iterations to train before starting with UDA")
+    parser.add_argument("--beta", type=float, default=0.01, choices=[0.01, 0.05, 0.005], help="factor to select size of mask. Should be between 0 and 1" )
+    parser.add_argument("--circle_mask", type=bool, default=False, help="to select the circular mask. Default mask is square")
     opt = parser.parse_args()
     print(opt)
 
@@ -139,11 +141,12 @@ if __name__ == "__main__":
 
     # Get dataloader
     dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False, 
-                    pixel_norm=True, train_data=train_dataset, use_angle=opt.use_angle, class_num= class_count, uda_method=opt.uda_method)
+                    pixel_norm=True, train_data=train_dataset, use_angle=opt.use_angle, class_num= class_count, 
+                    uda_method=opt.uda_method, beta=opt.beta, circular=opt.circle_mask)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=opt.n_cpu,
         pin_memory=True,
         collate_fn=dataset.collate_fn,
@@ -306,7 +309,7 @@ if __name__ == "__main__":
                     'optimizer_state_dict': optimizer.state_dict(),
                     'epoch': epoch,
                     'loss':  loss,
-                    },f"checkpoints/yolov3_ckpt_opt_{train_dataset}_%d.pth" % epoch)
+                    },f"checkpoints/yolov3_ckpt_opt_{gpu_no}_{train_dataset}_%d.pth" % epoch)
 
         if epoch % opt.evaluation_interval == 0:
             if epoch >= 0:

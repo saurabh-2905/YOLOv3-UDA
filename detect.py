@@ -136,12 +136,12 @@ def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_folder", type=str, default="/localdata/saurabh/yolov3/data/custom/images/val", help="path to dataset")
+    parser.add_argument("--image_folder", type=str, default="/localdata/saurabh/yolov3/data/samples", help="path to dataset")
     parser.add_argument("--dataset", type=str, help='to get the respective normalization values', choices=['theodore', 'fes', 'dst'])
-    parser.add_argument("--model_def", type=str, default="config/yolov3-custom-c6.cfg", help="path to model definition file")
-    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/thenorm2_1000.pth", help="path to weights file")
+    parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c6.cfg", help="path to model definition file")
+    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/optbase2_theo.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
-    parser.add_argument("--conf_thres", type=float, default=0.4, help="object confidence threshold")
+    parser.add_argument("--conf_thres", type=float, default=0.6, help="object confidence threshold")
     parser.add_argument("--nms_thres", type=float, default=0.2, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     print(opt)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    out_dir = os.path.basename(opt.pretrained_weights).split('.')[0]
     os.makedirs("output", exist_ok=True)
 
     # Set up model
@@ -160,16 +160,16 @@ if __name__ == "__main__":
 
     #model = MyModel(model, opt)
 
-    if opt.pretrained_weights.endswith(".weights"):
-        # Load darknet weights
-        model.load_darknet_weights(opt.pretrained_weights)
-    elif opt.pretrained_weights.endswith(".pth"):
-        # Load checkpoint weights
-        model.load_state_dict(torch.load(opt.pretrained_weights, map_location=f'{device}'))
-    elif opt.pretrained_weights.endswith(".ckpt"):
-        checkpoint = torch.load(opt.pretrained_weights, map_location=lambda storage, loc: storage)
-        model.load_state_dict(checkpoint['state_dict'])
-        
+    checkpoint = torch.load(opt.pretrained_weights, map_location=lambda storage, loc:storage)
+    if opt.pretrained_weights:
+        if opt.pretrained_weights.endswith(".pth"):
+            if opt.pretrained_weights.find('opt') != -1:
+                model.load_state_dict(checkpoint['model_state_dict'])
+                # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            else:
+                model.load_state_dict(checkpoint)
+        else:
+            model.load_darknet_weights(opt.pretrained_weights)
     #model = model.model 
     train_data = opt.dataset
 
@@ -179,7 +179,7 @@ if __name__ == "__main__":
             class_path=opt.class_path,
             conf_thres=opt.conf_thres,
             nms_thres=opt.nms_thres,
-            out_dir='detection',
+            out_dir=out_dir,
             batch_size=opt.batch_size,
             n_cpu=opt.n_cpu,
             train_data=train_data,

@@ -23,7 +23,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--fda_type", type=str, default='normal', choices=['np', 'normal'], help="select if images will be processed using torch of numpy" )
+    parser.add_argument("--fda_type", type=str, default='np', choices=['np', 'normal'], help="select if images will be processed using torch of numpy" )
     parser.add_argument("--beta", type=float, default=0.01, choices=[0.01, 0.05, 0.005], help="factor to select size of mask. Should be between 0 and 1" )
     parser.add_argument("--circle_mask", type=bool, default=False, help="to select the circular mask. Default mask is square")
     opt = parser.parse_args()
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
             # out_dir = src_imgpath[0].replace('person', 'fda')
             mixed = Image.fromarray(mixed)
-            mixed.save(out_dir)
+            # mixed.save(out_dir)
             # print(f'Saved output {out_dir}')
             
 
