@@ -254,8 +254,12 @@ class ListDataset(Dataset):
             trg_img= trg_img.transpose(2,0,1)
 
             img = FDA_source_to_target_np(img, trg_img, L=self.beta, use_circular=self.circular)   ### expect images in (c,h,w)
-            img = img.transpose(1,2,0).astype(np.uint8)
 
+            img = (255*(img - np.min(img))/np.ptp(img))     #### to normalize post. and neg. values in range (0,255)
+            # img = (img - np.min(img))/np.ptp(img)     #### to normalize post. and neg. values in range (0,1)
+
+            img = img.transpose(1,2,0).astype(np.uint8)
+            
             # img = (np.clip(img, 0, 255)).astype(np.uint8)   ### giet in the format to save
             # plt.imshow(img)
             # plt.savefig(f'fda_samples/{self.circular}_{self.beta}_{os.path.basename(img_path)}')
