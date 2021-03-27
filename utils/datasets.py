@@ -257,8 +257,8 @@ class ListDataset(Dataset):
             img = img.transpose(1,2,0).astype(np.uint8)
 
             # img = (np.clip(img, 0, 255)).astype(np.uint8)   ### giet in the format to save
-            plt.imshow(img)
-            plt.savefig(f'fda_samples/{self.circular}_{self.beta}_{os.path.basename(img_path)}')
+            # plt.imshow(img)
+            # plt.savefig(f'fda_samples/{self.circular}_{self.beta}_{os.path.basename(img_path)}')
 
 
 
