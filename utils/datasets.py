@@ -246,7 +246,7 @@ class ListDataset(Dataset):
         if self.uda_method == 'fda':
             trg_path = self.trg_files[ np.random.randint(len(self.trg_files)) ]
             trg_img = Image.open(trg_path).convert('RGB')
-            trg_img = trg_img.resize(img.shape[:2], resample=Image.NEAREST)
+            trg_img = trg_img.resize(img.shape[:2], resample=Image.BILINEAR)
             # trg_img.save('sample.png')
             trg_img = np.array(trg_img, dtype=np.uint8) #/255.0
             
@@ -254,16 +254,17 @@ class ListDataset(Dataset):
             trg_img= trg_img.transpose(2,0,1)
 
             img = FDA_source_to_target_np(img, trg_img, L=self.beta, use_circular=self.circular)   ### expect images in (c,h,w)
-
-            img = (255*(img - np.min(img))/np.ptp(img))     #### to normalize post. and neg. values in range (0,255)
-            # img = (img - np.min(img))/np.ptp(img)     #### to normalize post. and neg. values in range (0,1)
-
+            ########### not in fda exp #############
+            # img = (255*(img - np.min(img))/np.ptp(img))     #### to normalize post. and neg. values in range (0,255)
+            img = img.clip( 0,255)
+            ########################################
             img = img.transpose(1,2,0).astype(np.uint8)
             
+            ########### for testing ##################
             # img = (np.clip(img, 0, 255)).astype(np.uint8)   ### giet in the format to save
             # plt.imshow(img)
             # plt.savefig(f'fda_samples/{self.circular}_{self.beta}_{os.path.basename(img_path)}')
-
+            ##########################################
 
 
         # ---------
