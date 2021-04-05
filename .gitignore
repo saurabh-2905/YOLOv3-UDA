@@ -34,3 +34,5 @@ config/custom.data
 .ipynb_checkpoints/Visualization tool-checkpoint.ipynb
 testing_script.py
 *.png
+plots/*
+fda_samples/*
