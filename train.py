@@ -12,7 +12,7 @@ from itertools import cycle
 from terminaltables import AsciiTable
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = ' 0,1,2,3,4,5,6' #0,1,2,3,4,5,6
+os.environ['CUDA_VISIBLE_DEVICES'] = ' 0,1,2,3,4,5,6,7' #0,1,2,3,4,5,6,7
 import sys
 import time
 import datetime
