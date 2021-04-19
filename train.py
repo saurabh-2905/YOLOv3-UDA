@@ -26,6 +26,8 @@ from torch.autograd import Variable
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 
+from utils.fda import FDA_source_to_target
+
 def adjust_learning_rate(optimizer, epoch):
     # use warmup
     if epoch < 5:
@@ -48,7 +50,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c6.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/custom.data", help="path to data config file")
     parser.add_argument("--pretrained_weights", type=str, default="weights/yolov3.weights", help="if specified starts from checkpoint model")
-    parser.add_argument("--n_cpu", type=int, default=32, help="number of cpu threads to use during batch generation")
+    parser.add_argument("--n_cpu", type=int, default=16, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
     parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between saving model weights")
     parser.add_argument("--evaluation_interval", type=int, default=1, help="interval evaluations on validation set")
@@ -58,13 +60,13 @@ if __name__ == "__main__":
     parser.add_argument("--uda_method", default=None, choices=['minent', 'fda'], help="select the domain adaptation method")
     parser.add_argument("--train_data", default=None, choices=['theo_cep', 'imagenet'], help="use the flag to overwrite default parameter or when using UDA method")
     parser.add_argument("--warmup_iter", default=0, type=int, help="specify number of iterations to train before starting with UDA")
-    parser.add_argument("--beta", type=float, default=0.01, choices=[0.01, 0.05, 0.005], help="factor to select size of mask. Should be between 0 and 1" )
+    parser.add_argument("--beta", type=float, default=0.01, choices=[0.1, 0.01, 0.05, 0.005], help="factor to select size of mask. Should be between 0 and 1" )
     parser.add_argument("--circle_mask", type=bool, default=False, help="to select the circular mask. Default mask is square")
     opt = parser.parse_args()
     print(opt)
 
     logger = Logger("logs")
-    gpu_no = 6
+    gpu_no = 4
     device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
     if device.type != 'cpu':
         torch.cuda.set_device(device.index)
@@ -172,7 +174,7 @@ if __name__ == "__main__":
             "conf_noobj",
         ]
 
-    if opt.uda_method == 'minent':
+    if opt.uda_method == 'minent' or opt.uda_method == 'fda':
         # Get dataloader for target domains
         target_dataset = ImageFolder(folder_path=targetdomain_path, train_data=train_dataset, augment=True)
         targetloader = torch.utils.data.DataLoader(
@@ -198,6 +200,13 @@ if __name__ == "__main__":
 
             imgs = Variable(imgs.to(device))
             targets = Variable(targets.to(device), requires_grad=False)
+
+            if opt.uda_method == 'fda':
+                _, batch_uda = targetloader_iter.__next__()
+                images_paths, images_uda = batch_uda
+                images_uda = Variable(images_uda.to(device))
+
+                imgs = FDA_source_to_target(imgs, images_uda, L=opt.beta, use_circular=opt.circle_mask)
 
             loss, outputs = model(imgs, targets=targets, use_angle=opt.use_angle)
             loss.backward()

@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
+import glob
+from PIL import Image
 
 import imgaug.augmenters as iaa
 from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
@@ -8,6 +10,8 @@ from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 
 import torchvision.transforms as transforms
 from .utils import xywh2xyxy_np
+
+from utils.fda import FDA_source_to_target_np
 
 
 class ImgAug(object):
@@ -104,4 +108,21 @@ class Resize(object):
     def __call__(self, data):
         img, boxes = data
         img = F.interpolate(img.unsqueeze(0), size=self.size, mode="nearest").squeeze(0)
+        return img, boxes
+
+class fda_adapt(object):
+    def __init__(self, beta, mask ):
+        self.trg_files = glob.glob('/localdata/saurabh/yolov3/data/cepdof/all_images/*')
+        self.beta = beta
+        self.circle_mask = mask
+
+    def __call__(self,data):
+        img, boxes = data
+
+        trg_path = self.trg_files[ np.random.randint(len(self.trg_files)) ]
+        trg_img = Image.open(trg_path).convert('RGB')
+        trg_img = trg_img.resize(img.shape[:2], resample=Image.BILINEAR)
+
+        img = FDA_source_to_target_np(img, trg_img, L=self.beta, use_circular=self.circle_mask)
+
         return img, boxes

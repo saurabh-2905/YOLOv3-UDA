@@ -122,8 +122,8 @@ class ListDataset(Dataset):
         with open(list_path, "r") as file:
             self.img_files = file.readlines()
 
-        if uda_method == 'fda':
-            self.trg_files = glob.glob('/localdata/saurabh/yolov3/data/cepdof/all_images/*')
+        '''if uda_method == 'fda':
+            self.trg_files = glob.glob('/localdata/saurabh/yolov3/data/cepdof/all_images/*')'''
 
         if use_angle == 'True':
             if class_num == 1:
@@ -243,7 +243,7 @@ class ListDataset(Dataset):
         #print(img_path)
         img = np.array(Image.open(img_path).convert('RGB'), dtype=np.uint8) #/255.0
 
-        if self.uda_method == 'fda':
+        '''if self.uda_method == 'fda':
             trg_path = self.trg_files[ np.random.randint(len(self.trg_files)) ]
             trg_img = Image.open(trg_path).convert('RGB')
             trg_img = trg_img.resize(img.shape[:2], resample=Image.BILINEAR)
@@ -264,7 +264,7 @@ class ListDataset(Dataset):
             # img = (np.clip(img, 0, 255)).astype(np.uint8)   ### giet in the format to save
             # plt.imshow(img)
             # plt.savefig(f'fda_samples/{self.circular}_{self.beta}_{os.path.basename(img_path)}')
-            ##########################################
+            ##########################################'''
 
 
         # ---------
