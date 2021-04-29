@@ -105,22 +105,23 @@ def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, 
 
                 #Draw bounding boxes
                 cv2.polylines(img, [pts], isClosed=True, color=color, thickness=5)
-                #cv2.putText(img, classes[int(cls_pred)], (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX ,  2, 1, cv2.LINE_AA)
+                cv2.putText(img, classes[int(cls_pred)], (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX ,  2, color, cv2.LINE_AA)
                 ax.imshow(img[...,::-1]) #convert BGR image to RGB image
 
-                # Create a Rectangle patch
-                #bbox = patches.Polygon(xy, closed=True, linewidth=2, edgecolor=color, facecolor="none")
-                # Add the bbox to the plot
-                #ax.add_patch(bbox)
+                # # Create a Rectangle patch
+                # color_mat = tuple([int(x)/255 for x in color])
+                # bbox = patches.Polygon(xy, closed=True, linewidth=2, edgecolor=color_mat, facecolor="none")
+                # # Add the bbox to the plot
+                # ax.add_patch(bbox)
                 
-                # Add label
+                # # Add label
                 # plt.text(
                 #     x1,
                 #     y1,
                 #     s=classes[int(cls_pred)],
                 #     color="white",
                 #     verticalalignment="top",
-                #     bbox={"color": color, "pad": 0},
+                #     bbox={"color": color_mat, "pad": 0},
                 # )
 
         if detections is not None:
@@ -139,10 +140,10 @@ if __name__ == "__main__":
     parser.add_argument("--image_folder", type=str, default="/localdata/saurabh/yolov3/data/samples", help="path to dataset")
     parser.add_argument("--dataset", type=str, help='to get the respective normalization values', choices=['theodore', 'fes', 'dst'])
     parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c6.cfg", help="path to model definition file")
-    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/optbase2_theo.pth", help="path to weights file")
+    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/minent31_opt.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
-    parser.add_argument("--conf_thres", type=float, default=0.6, help="object confidence threshold")
-    parser.add_argument("--nms_thres", type=float, default=0.2, help="iou thresshold for non-maximum suppression")
+    parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
+    parser.add_argument("--nms_thres", type=float, default=0.5, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
