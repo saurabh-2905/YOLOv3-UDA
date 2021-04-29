@@ -6,7 +6,7 @@ from utils.datasets import *
 from utils.parse_config import *
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = ' 0,1,2,3,4,5,6,7'  # 0,1,2,3,4,5,6
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6 '  # 0,1,2,3,4,5,6
 import sys
 import time
 import datetime
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=16, help="size of each image batch")
     parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c6.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/testing.data", help="path to data config file")
-    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/fda1norm_opt.pth", help="path to weights file")
+    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/minent33_opt.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
     parser.add_argument("--iou_thres", type=float, default=0.5, help="iou threshold required to qualify as detected")
     parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     opt = parser.parse_args()
     print(opt)
 
-    gpu_no = 6
+    gpu_no = 0
     device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
     if device.type != 'cpu':
         torch.cuda.set_device(device.index)

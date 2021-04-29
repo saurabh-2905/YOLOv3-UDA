@@ -44,7 +44,7 @@ def adjust_learning_rate(optimizer, epoch):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=100, help="number of epochs")
-    parser.add_argument("--lr", type=float, default=1e-5, help="learning rate")
+    parser.add_argument("--lr", type=float, default=5e-5, help="learning rate")
     parser.add_argument("--batch_size", type=int, default=16, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
     parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c6.cfg", help="path to model definition file")
@@ -62,11 +62,12 @@ if __name__ == "__main__":
     parser.add_argument("--warmup_iter", default=0, type=int, help="specify number of iterations to train before starting with UDA")
     parser.add_argument("--beta", type=float, default=0.01, choices=[0.1, 0.01, 0.05, 0.005], help="factor to select size of mask. Should be between 0 and 1" )
     parser.add_argument("--circle_mask", type=bool, default=False, help="to select the circular mask. Default mask is square")
+    parser.add_argument("--augment", type=bool, default=False )
     opt = parser.parse_args()
     print(opt)
 
     logger = Logger("logs")
-    gpu_no = 4
+    gpu_no = 1
     device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
     if device.type != 'cpu':
         torch.cuda.set_device(device.index)
@@ -132,7 +133,7 @@ if __name__ == "__main__":
         else:
             model.load_darknet_weights(opt.pretrained_weights)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr )  #0.001  weight_decay=0.0001
 
     #### Load optimizer state dict if available
     if opt.pretrained_weights.find('opt') != -1:
@@ -142,7 +143,7 @@ if __name__ == "__main__":
     # scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[7,10,15], gamma=0.5)
 
     # Get dataloader
-    dataset = ListDataset(train_path, augment=True, multiscale=opt.multiscale_training, normalized_labels=False, 
+    dataset = ListDataset(train_path, augment=opt.augment, multiscale=opt.multiscale_training, normalized_labels=False, 
                     pixel_norm=True, train_data=train_dataset, use_angle=opt.use_angle, class_num= class_count, 
                     uda_method=opt.uda_method, beta=opt.beta, circular=opt.circle_mask)
     dataloader = torch.utils.data.DataLoader(
