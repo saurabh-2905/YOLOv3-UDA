@@ -101,6 +101,18 @@ class ToTensor(object):
 
         return img, bb_targets
 
+class jitter(object):
+    def __init__(self, ):
+        pass
+
+    def __call__(self, data):
+        img, boxes = data
+
+        img = transforms.ColorJitter(0.3, 0.3, 0.3, 0.3)(img)
+        img = np.array(img, dtype=np.uint8)
+
+        return img, boxes
+
 class Resize(object):
     def __init__(self, size):
         self.size = size
@@ -126,3 +138,14 @@ class fda_adapt(object):
         img = FDA_source_to_target_np(img, trg_img, L=self.beta, use_circular=self.circle_mask)
 
         return img, boxes
+
+class basic_aug(object):
+    def __init__(self, ):
+        pass
+
+    def __call__(self,data):
+        img, boxes = data
+
+        images = torch.flip(img, [-1])
+        boxes[:, 2] = 1 - boxes[:, 2]
+        return images, boxes

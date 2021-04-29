@@ -242,6 +242,10 @@ class ListDataset(Dataset):
         img_path = self.img_files[index % len(self.img_files)].rstrip()
         #print(img_path)
         img = np.array(Image.open(img_path).convert('RGB'), dtype=np.uint8) #/255.0
+        # if self.augment == True:
+        #     img = np.array(Image.open(img_path).convert('RGB'), dtype=np.uint8) #/255.0
+        # else:
+        #     img = Image.open(img_path).convert('RGB')
 
         '''if self.uda_method == 'fda':
             trg_path = self.trg_files[ np.random.randint(len(self.trg_files)) ]
@@ -294,12 +298,18 @@ class ListDataset(Dataset):
                 ])
             else:
                 tran = transforms.Compose([
+                # jitter(),
                 PadSquare(),
                 RelativeLabels(),
                 ToTensor(),
+                # basic_aug()
                 ])
 
             img, targets = tran((img,boxes))
+
+        else:
+            img = np.array(img, dtype=np.uint8)
+
 
         if img.shape[2] == 3:
             img = transforms.ToTensor()(img)
