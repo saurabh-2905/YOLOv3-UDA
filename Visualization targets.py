@@ -129,11 +129,12 @@ if __name__ == "__main__":
                 # box_w = x2 - x1
                 # box_h = y2 - y1
 
-                color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
+                # color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
+                color = bbox_colors[int(cls_pred)]
 
                 #Draw bounding boxes
                 cv2.polylines(img, [pts], isClosed=True, color=color, thickness=5)
-                #cv2.putText(img, classes[int(cls_pred)], (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX ,  0.8, 1, cv2.LINE_AA)
+                cv2.putText(img, classes[int(cls_pred)], (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX ,  2, color, cv2.LINE_AA)
                 ax.imshow(img[...,::-1]) #convert BGR image to RGB image
 
                 # Create a Rectangle patch
@@ -158,5 +159,6 @@ if __name__ == "__main__":
         plt.gca().xaxis.set_major_locator(NullLocator())
         plt.gca().yaxis.set_major_locator(NullLocator())
         filename = path.split("/")[-1].split(".")[0]
-        plt.savefig(f"output/targets/rotated/{filename}.png", bbox_inches="tight", pad_inches=0.0)
+        # plt.savefig(f"output/targets/rotated/{filename}.png", bbox_inches="tight", pad_inches=0.0)
+        plt.savefig(f"output/detection/{filename}.png", bbox_inches="tight", pad_inches=0.0)
         plt.close()

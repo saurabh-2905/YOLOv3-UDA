@@ -5,7 +5,7 @@ from utils.utils import *
 from utils.datasets import *
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = ' '
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3 '
 import sys
 import time
 import datetime
@@ -101,8 +101,8 @@ def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, 
                 #box_w = x2 - x1
                 #box_h = y2 - y1
 
-                color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
-
+                # color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
+                color = bbox_colors[int(cls_pred)]
                 #Draw bounding boxes
                 cv2.polylines(img, [pts], isClosed=True, color=color, thickness=5)
                 cv2.putText(img, classes[int(cls_pred)], (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX ,  2, color, cv2.LINE_AA)
@@ -130,8 +130,9 @@ def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, 
             plt.gca().xaxis.set_major_locator(NullLocator())
             plt.gca().yaxis.set_major_locator(NullLocator())
             filename = path.split("/")[-1].split(".")[0]
-            os.makedirs(f'output/{out_dir}',exist_ok=True)
-            plt.savefig(f"output/{out_dir}/{filename}.png", bbox_inches="tight", pad_inches=0.0)
+            # os.makedirs(f'output/{out_dir}',exist_ok=True)
+            # plt.savefig(f"output/{out_dir}/{filename}.png", bbox_inches="tight", pad_inches=0.0)
+            plt.savefig(f"output/detection/{out_dir}.png", bbox_inches="tight", pad_inches=0.0)
         plt.close()
 
 
@@ -152,7 +153,12 @@ if __name__ == "__main__":
     opt = parser.parse_args()
     print(opt)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    gpu_no = 0
+    device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
+    if device.type != 'cpu':
+        torch.cuda.set_device(device.index)
+    print(device)
+
     out_dir = os.path.basename(opt.pretrained_weights).split('.')[0]
     os.makedirs("output", exist_ok=True)
 
