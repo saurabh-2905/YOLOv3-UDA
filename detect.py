@@ -138,10 +138,10 @@ def draw_bbox(model, image_folder, img_size, class_path, conf_thres, nms_thres, 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_folder", type=str, default="/localdata/saurabh/yolov3/data/samples", help="path to dataset")
+    parser.add_argument("--image_folder", type=str, default="/localdata/saurabh/yolov3/data/single/", help="path to dataset")
     parser.add_argument("--dataset", type=str, help='to get the respective normalization values', choices=['theodore', 'fes', 'dst'])
     parser.add_argument("--model_def", type=str, default="config/yolov3-rot-c6.cfg", help="path to model definition file")
-    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/minent31_opt.pth", help="path to weights file")
+    parser.add_argument("--pretrained_weights", type=str, default="checkpoints/dst-fes/minent33_opt.pth", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/class.names", help="path to class label file")
     parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
     parser.add_argument("--nms_thres", type=float, default=0.5, help="iou thresshold for non-maximum suppression")

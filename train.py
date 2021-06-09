@@ -67,7 +67,7 @@ if __name__ == "__main__":
     print(opt)
 
     logger = Logger("logs")
-    gpu_no = 1
+    gpu_no = 4
     device = torch.device(f"cuda:{gpu_no}" if torch.cuda.is_available() else "cpu")
     if device.type != 'cpu':
         torch.cuda.set_device(device.index)

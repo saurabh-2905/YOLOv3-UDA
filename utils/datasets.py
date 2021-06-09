@@ -133,7 +133,7 @@ class ListDataset(Dataset):
                 ]
             elif class_num == 6:
                 self.label_files = [
-                    path.replace("images", "labels").replace(".png", ".txt").replace(".jpg", ".txt").replace('person', 'all_class')
+                    path.replace("images", "labels").replace(".png", ".txt").replace(".jpg", ".txt").replace('person', 'all_class').replace('gaussian','all_class')
                     for path in self.img_files
                 ]
         else:
@@ -144,7 +144,7 @@ class ListDataset(Dataset):
                 ]
             elif class_num == 6:
                 self.label_files = [
-                    path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt").replace('person', 'all_class')           #.replace('fda', 'all_class')
+                    path.replace("images", "labelsbbox").replace(".png", ".txt").replace(".jpg", ".txt").replace('person', 'all_class').replace('gaussian','all_class')           #.replace('fda', 'all_class')
                     for path in self.img_files
                 ]
         self.img_size = img_size
