@@ -5,7 +5,9 @@ A minimal PyTorch implementation of YOLOv3, with support for training, inference
 ##### Clone and install requirements
     $ git clone https://github.com/saurabh-2905/YOLOv3-UDA.git
     $ cd YOLOv3-UDA/
-    $ sudo pip3 install -r requirements.txt
+    $ sudo pip3 install -r requirements_rotated.txt
+    
+
 
 
 
