@@ -1,4 +1,4 @@
-# PyTorch-YOLOv3
+# YOLOv3-UDA
 A minimal PyTorch implementation of YOLOv3, with support for training, inference and evaluation. An addtional implementation of two Unsupervised Domain Adaptation methods (Direct Entropy Minimization and Fourier Domain Adaptation) integrated in the architecture.
 
 ## Installation
